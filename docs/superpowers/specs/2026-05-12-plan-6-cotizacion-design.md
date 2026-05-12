@@ -1,6 +1,8 @@
-# Plan 5 — Cotización: catálogo y plan de normalización
+# Plan 6 — Cotización: catálogo y plan de normalización
 
-> Spec de Plan 5. Continúa Plan 4 (verificación RIC) agregando el motor de cotización.
+> Spec de Plan 6. Continúa Plan 5 (workspace + diagrama RIC compliant). El motor de cotización se beneficia del modelo extendido del Plan 5 (alimentadores, secciones, longitudes, canalizaciones) para calcular materiales con mayor precisión.
+>
+> **Nota de re-secuencia (2026-05-12):** este spec se llamaba originalmente "Plan 5" pero fue movido a Plan 6 cuando se detectó que el workspace y el diagrama necesitaban un re-trabajo más urgente (cumplimiento RIC N°18). El contenido del spec es el mismo; sólo cambió la numeración.
 
 **Fecha:** 2026-05-12
 **Autor:** Daniel Romero (con asistencia de Claude)
