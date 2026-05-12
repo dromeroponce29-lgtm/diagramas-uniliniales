@@ -127,4 +127,14 @@ describe('almacén Tablero', () => {
     expect(cliente.tableros).toHaveLength(0);
     await expect(leerTablero(clienteSlug, t.slug)).rejects.toThrow();
   });
+
+  it('inicializa circuitos y anotacionesHallazgos como arrays vacíos', async () => {
+    const tablero = await crearTablero(clienteSlug, {
+      codigo: 'TG', nombre: 'Test', tipo: 'general',
+      tensionSistema: 'pendiente', esquemaTierra: 'pendiente'
+    });
+    expect(tablero.circuitos).toEqual([]);
+    expect(tablero.anotacionesHallazgos).toEqual([]);
+    expect(tablero.espaciosTotales).toBeUndefined();
+  });
 });

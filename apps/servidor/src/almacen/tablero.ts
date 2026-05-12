@@ -62,6 +62,8 @@ export async function crearTablero(slugCliente: string, entrada: TableroEntrada)
     esquemaTierra: entrada.esquemaTierra ?? 'pendiente',
     ...(entrada.potenciaContratadaKW !== undefined && { potenciaContratadaKW: entrada.potenciaContratadaKW }),
     ...(entrada.corrienteNominalA !== undefined && { corrienteNominalA: entrada.corrienteNominalA }),
+    circuitos: [],
+    anotacionesHallazgos: [],
     fotos: [],
     componentes: [],
     pendientes: [],
