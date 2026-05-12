@@ -1,0 +1,46 @@
+{
+  "calidadFoto": "buena",
+  "problemasFoto": [],
+  "componentesDetectados": [
+    {
+      "tipoSugerido": "interruptor-general",
+      "marca": "Schneider Electric",
+      "modelo": "C60H",
+      "calibreA": 63,
+      "polos": 3,
+      "curva": "C",
+      "sensibilidadMA": null,
+      "posicion": { "fila": 0, "columna": 0 },
+      "textoLeido": "C60H 63A 3P",
+      "confianzaAgente": "alta",
+      "notas": null
+    },
+    {
+      "tipoSugerido": "interruptor-automatico",
+      "marca": null,
+      "modelo": null,
+      "calibreA": 16,
+      "polos": 1,
+      "curva": "C",
+      "sensibilidadMA": null,
+      "posicion": { "fila": 2, "columna": 0 },
+      "textoLeido": "C16",
+      "confianzaAgente": "alta",
+      "notas": null
+    },
+    {
+      "tipoSugerido": "interruptor-automatico",
+      "marca": null,
+      "modelo": null,
+      "calibreA": 6,
+      "polos": 1,
+      "curva": "C",
+      "sensibilidadMA": null,
+      "posicion": { "fila": 2, "columna": 1 },
+      "textoLeido": "C6",
+      "confianzaAgente": "media",
+      "notas": null
+    }
+  ],
+  "rotulacionCircuitosLeida": []
+}

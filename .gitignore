@@ -4,22 +4,30 @@ node_modules/
 # Build outputs
 dist/
 build/
-.next/
-out/
+.cache/
 
-# Logs
-*.log
-npm-debug.log*
-
-# Entorno (¡NUNCA subir secretos!)
+# Variables de entorno
 .env
 .env.local
 .env.*.local
 
-# Sistema operativo
+# Datos del usuario (proyectos guardados en disco)
+proyectos/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Sistema
 .DS_Store
 Thumbs.db
 
-# Editor
-.vscode/
+# IDE
+.vscode/*
+!.vscode/extensions.json
 .idea/
+
+# Tests
+coverage/
+.nyc_output/
