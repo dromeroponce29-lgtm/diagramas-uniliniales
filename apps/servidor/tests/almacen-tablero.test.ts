@@ -9,7 +9,9 @@ import {
   eliminarTablero,
   agregarComponentes,
   agregarFotoYComponentes,
-  actualizarComponente
+  actualizarComponente,
+  reemplazarCircuitos,
+  reemplazarAnotacionesHallazgos
 } from '../src/almacen/tablero.js';
 import type { ComponenteReconciliado } from '../../../tipos/modelo.js';
 
@@ -147,5 +149,36 @@ describe('almacén Tablero', () => {
     expect(tablero.circuitos).toEqual([]);
     expect(tablero.anotacionesHallazgos).toEqual([]);
     expect(tablero.espaciosTotales).toBeUndefined();
+  });
+
+  it('reemplazarCircuitos sustituye el array completo y persiste', async () => {
+    const t = await crearTablero(clienteSlug, { codigo: 'TG', nombre: 'TG', tipo: 'general' });
+    const nuevoCircuito = {
+      id: '01J0000000000000000000000C',
+      numero: 1,
+      proteccionComponenteId: '01J0000000000000000000000D',
+      destino: 'Iluminación',
+      uso: 'iluminacion' as const,
+      procedencia: { fuente: 'manual' as const, confianza: 'alta' as const }
+    };
+    const actualizado = await reemplazarCircuitos(clienteSlug, t.slug, [nuevoCircuito]);
+    expect(actualizado.circuitos).toEqual([nuevoCircuito]);
+    const releido = await leerTablero(clienteSlug, t.slug);
+    expect(releido.circuitos).toEqual([nuevoCircuito]);
+  });
+
+  it('reemplazarAnotacionesHallazgos sustituye el array completo y persiste', async () => {
+    const t = await crearTablero(clienteSlug, { codigo: 'TG', nombre: 'TG', tipo: 'general' });
+    const anotacion = {
+      id: '01J0000000000000000000000E',
+      reglaId: 'ric.tablero.dps-presente',
+      tipo: 'no-aplica' as const,
+      justificacion: 'Instalación previa',
+      creadoEn: '2026-05-12T00:00:00Z'
+    };
+    const actualizado = await reemplazarAnotacionesHallazgos(clienteSlug, t.slug, [anotacion]);
+    expect(actualizado.anotacionesHallazgos).toEqual([anotacion]);
+    const releido = await leerTablero(clienteSlug, t.slug);
+    expect(releido.anotacionesHallazgos).toEqual([anotacion]);
   });
 });

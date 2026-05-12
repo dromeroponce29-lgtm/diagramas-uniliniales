@@ -216,3 +216,35 @@ export async function actualizarComponente(
   await sincronizarCliente(slugCliente);
   return actualizado;
 }
+
+export async function reemplazarCircuitos(
+  slugCliente: string,
+  slugTablero: string,
+  circuitos: Tablero['circuitos']
+): Promise<Tablero> {
+  const actual = await leerTablero(slugCliente, slugTablero);
+  const actualizado: Tablero = sincronizarCompletitud({
+    ...actual,
+    circuitos,
+    actualizadoEn: new Date().toISOString()
+  });
+  await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);
+  await sincronizarCliente(slugCliente);
+  return actualizado;
+}
+
+export async function reemplazarAnotacionesHallazgos(
+  slugCliente: string,
+  slugTablero: string,
+  anotaciones: Tablero['anotacionesHallazgos']
+): Promise<Tablero> {
+  const actual = await leerTablero(slugCliente, slugTablero);
+  const actualizado: Tablero = sincronizarCompletitud({
+    ...actual,
+    anotacionesHallazgos: anotaciones,
+    actualizadoEn: new Date().toISOString()
+  });
+  await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);
+  await sincronizarCliente(slugCliente);
+  return actualizado;
+}
