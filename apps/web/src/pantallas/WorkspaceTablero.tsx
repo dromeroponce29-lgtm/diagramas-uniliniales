@@ -7,6 +7,7 @@ import { PanelFotos } from '../componentes/PanelFotos.js';
 import { PanelComponentes } from '../componentes/PanelComponentes.js';
 import { PanelPendientes } from '../componentes/PanelPendientes.js';
 import { DiagramaSVG } from '../diagrama/DiagramaSVG.js';
+import { PanelAnalisisRIC } from '../componentes/PanelAnalisisRIC.js';
 
 export function WorkspaceTablero() {
   const { clienteSlug, tableroSlug } = useParams();
@@ -71,9 +72,7 @@ export function WorkspaceTablero() {
           <PanelPendientes tablero={tablero} clienteSlug={clienteSlug!} tableroSlug={tableroSlug!} />
         </div>
         <div className="col-span-6">
-          <div className="bg-slate-100 border-2 border-dashed border-slate-300 rounded p-4 text-center text-slate-500">
-            Hallazgos RIC — se construyen en el Plan 4.
-          </div>
+          <PanelAnalisisRIC tablero={tablero} clienteSlug={clienteSlug!} tableroSlug={tableroSlug!} />
         </div>
       </div>
     </div>
