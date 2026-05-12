@@ -53,5 +53,11 @@ export const apiTableros = {
   },
 
   actualizarComponente: (clienteSlug: string, tableroSlug: string, componenteId: string, datos: unknown) =>
-    pedir<Tablero>('PATCH', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/componentes/${componenteId}`, datos)
+    pedir<Tablero>('PATCH', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/componentes/${componenteId}`, datos),
+
+  reemplazarCircuitos: (clienteSlug: string, tableroSlug: string, circuitos: unknown[]) =>
+    pedir<Tablero>('PUT', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/circuitos`, { circuitos }),
+
+  reemplazarAnotacionesHallazgos: (clienteSlug: string, tableroSlug: string, anotaciones: unknown[]) =>
+    pedir<Tablero>('PUT', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/anotaciones-ric`, { anotaciones })
 };
