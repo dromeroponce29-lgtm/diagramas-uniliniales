@@ -106,4 +106,45 @@ describe('API /api/clientes/:c/tableros', () => {
     const r = await request(app()).delete('/api/clientes/cliente-uno/tableros/tg');
     expect(r.status).toBe(204);
   });
+
+  it('PUT /circuitos reemplaza el array completo', async () => {
+    await request(app()).post('/api/clientes/cliente-uno/tableros').send({ codigo: 'TG', nombre: 'TG', tipo: 'general' });
+    const circuito = {
+      id: '01J0000000000000000000000C',
+      numero: 1,
+      proteccionComponenteId: '01J0000000000000000000000D',
+      destino: 'Living',
+      uso: 'iluminacion',
+      procedencia: { fuente: 'manual', confianza: 'alta' }
+    };
+    const r = await request(app())
+      .put('/api/clientes/cliente-uno/tableros/tg/circuitos')
+      .send({ circuitos: [circuito] });
+    expect(r.status).toBe(200);
+    expect(r.body.circuitos).toHaveLength(1);
+  });
+
+  it('PUT /circuitos rechaza body sin array', async () => {
+    await request(app()).post('/api/clientes/cliente-uno/tableros').send({ codigo: 'TG', nombre: 'TG', tipo: 'general' });
+    const r = await request(app())
+      .put('/api/clientes/cliente-uno/tableros/tg/circuitos')
+      .send({ circuitos: 'no-array' });
+    expect(r.status).toBe(400);
+  });
+
+  it('PUT /anotaciones-ric reemplaza el array completo', async () => {
+    await request(app()).post('/api/clientes/cliente-uno/tableros').send({ codigo: 'TG', nombre: 'TG', tipo: 'general' });
+    const anotacion = {
+      id: '01J0000000000000000000000E',
+      reglaId: 'ric.tablero.dps-presente',
+      tipo: 'no-aplica',
+      justificacion: 'previa',
+      creadoEn: '2026-05-12T00:00:00Z'
+    };
+    const r = await request(app())
+      .put('/api/clientes/cliente-uno/tableros/tg/anotaciones-ric')
+      .send({ anotaciones: [anotacion] });
+    expect(r.status).toBe(200);
+    expect(r.body.anotacionesHallazgos).toHaveLength(1);
+  });
 });
