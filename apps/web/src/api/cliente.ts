@@ -33,7 +33,7 @@ export const apiTableros = {
     pedir<Tablero>('POST', `/api/clientes/${clienteSlug}/tableros`, datos),
   leer: (clienteSlug: string, tableroSlug: string) =>
     pedir<Tablero>('GET', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}`),
-  actualizar: (clienteSlug: string, tableroSlug: string, datos: Partial<{ tensionSistema: string; esquemaTierra: string; potenciaContratadaKW: number; corrienteNominalA: number; ubicacion: string; nombre: string; codigo: string; tipo: string }>) =>
+  actualizar: (clienteSlug: string, tableroSlug: string, datos: Partial<{ tensionSistema: string; esquemaTierra: string; potenciaContratadaKW: number; corrienteNominalA: number; ubicacion: string; nombre: string; codigo: string; tipo: string; espaciosTotales: number }>) =>
     pedir<Tablero>('PUT', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}`, datos),
   eliminar: (clienteSlug: string, tableroSlug: string) =>
     pedir<void>('DELETE', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}`),
