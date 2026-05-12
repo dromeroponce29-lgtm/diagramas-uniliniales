@@ -1,0 +1,13 @@
+{
+  "name": "diagramas-uniliniales",
+  "version": "1.0.0",
+  "description": "genera diagramas uniliniales elctricos a apartir de fotografia del tablero ]",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Daniel Romero",
+  "license": "ISC",
+  "type": "commonjs"
+}
