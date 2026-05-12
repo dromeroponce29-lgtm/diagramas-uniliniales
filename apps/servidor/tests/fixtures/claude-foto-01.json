@@ -1,0 +1,49 @@
+{
+  "calidadFoto": "buena",
+  "problemasFoto": [],
+  "componentesDetectados": [
+    {
+      "tipoSugerido": "interruptor-general",
+      "marca": "Schneider",
+      "modelo": "C60H",
+      "calibreA": 63,
+      "polos": 3,
+      "curva": "C",
+      "sensibilidadMA": null,
+      "posicion": { "fila": 0, "columna": 0 },
+      "textoLeido": "C60H 63A",
+      "confianzaAgente": "alta",
+      "notas": null
+    },
+    {
+      "tipoSugerido": "interruptor-automatico",
+      "marca": "Schneider",
+      "modelo": null,
+      "calibreA": 16,
+      "polos": 1,
+      "curva": "C",
+      "sensibilidadMA": null,
+      "posicion": { "fila": 2, "columna": 0 },
+      "textoLeido": "C16",
+      "confianzaAgente": "alta",
+      "notas": null
+    },
+    {
+      "tipoSugerido": "interruptor-automatico",
+      "marca": null,
+      "modelo": null,
+      "calibreA": 10,
+      "polos": 1,
+      "curva": "C",
+      "sensibilidadMA": null,
+      "posicion": { "fila": 2, "columna": 1 },
+      "textoLeido": "C10",
+      "confianzaAgente": "media",
+      "notas": "etiqueta parcialmente borrosa"
+    }
+  ],
+  "rotulacionCircuitosLeida": [
+    { "numero": 1, "textoOriginal": "ILUMINACION COCINA" },
+    { "numero": 2, "textoOriginal": "ENCHUFES LIVING" }
+  ]
+}
