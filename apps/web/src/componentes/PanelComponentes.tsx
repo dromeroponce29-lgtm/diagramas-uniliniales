@@ -7,9 +7,10 @@ interface Props {
   tablero: Tablero;
   clienteSlug: string;
   tableroSlug: string;
+  componenteResaltadoId?: string | null;
 }
 
-export function PanelComponentes({ tablero, clienteSlug, tableroSlug }: Props) {
+export function PanelComponentes({ tablero, clienteSlug, tableroSlug, componenteResaltadoId }: Props) {
   const { actualizarComponente } = useTableroStore();
   const [resolviendo, setResolviendo] = useState<ComponenteReconciliado | null>(null);
 
@@ -37,7 +38,7 @@ export function PanelComponentes({ tablero, clienteSlug, tableroSlug }: Props) {
           </thead>
           <tbody>
             {tablero.componentes.map(c => (
-              <tr key={c.id} className="border-b last:border-b-0">
+              <tr key={c.id} className={`border-b last:border-b-0 ${c.id === componenteResaltadoId ? 'bg-blue-50' : ''}`}>
                 <td className="px-3 py-2">{c.tipo}</td>
                 <td className="px-3 py-2">{c.calibreA ? `${c.calibreA} A` : '—'}{c.polos ? ` · ${c.polos}P` : ''}</td>
                 <td className="px-3 py-2">{c.marca ?? '—'} {c.modelo ?? ''}</td>

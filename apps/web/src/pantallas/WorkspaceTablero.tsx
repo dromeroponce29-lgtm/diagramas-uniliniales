@@ -1,14 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTableroStore } from '../estado/tableroStore.js';
+import { useClienteStore } from '../estado/clienteStore.js';
 import { BarraCompletitud } from '../componentes/BarraCompletitud.js';
 import { PanelFotos } from '../componentes/PanelFotos.js';
 import { PanelComponentes } from '../componentes/PanelComponentes.js';
 import { PanelPendientes } from '../componentes/PanelPendientes.js';
+import { DiagramaSVG } from '../diagrama/DiagramaSVG.js';
 
 export function WorkspaceTablero() {
   const { clienteSlug, tableroSlug } = useParams();
   const { tablero, cargando, error, cargar, limpiar } = useTableroStore();
+  const { clientes, cargarTodos } = useClienteStore();
+  const [componenteResaltadoId, setComponenteResaltadoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (clienteSlug && tableroSlug) {
@@ -16,6 +20,10 @@ export function WorkspaceTablero() {
     }
     return () => limpiar();
   }, [clienteSlug, tableroSlug, cargar, limpiar]);
+
+  useEffect(() => {
+    if (clientes.length === 0) cargarTodos();
+  }, [clientes.length, cargarTodos]);
 
   if (cargando) return <div className="p-8 text-slate-500">Cargando tablero...</div>;
   if (error) return (
@@ -25,6 +33,8 @@ export function WorkspaceTablero() {
     </div>
   );
   if (!tablero) return null;
+
+  const cliente = clientes.find(c => c.slug === clienteSlug);
 
   return (
     <div className="min-h-full flex flex-col">
@@ -38,11 +48,20 @@ export function WorkspaceTablero() {
           <PanelFotos tablero={tablero} clienteSlug={clienteSlug!} tableroSlug={tableroSlug!} />
         </div>
         <div className="col-span-5">
-          <PanelComponentes tablero={tablero} clienteSlug={clienteSlug!} tableroSlug={tableroSlug!} />
+          <PanelComponentes
+            tablero={tablero}
+            clienteSlug={clienteSlug!}
+            tableroSlug={tableroSlug!}
+            componenteResaltadoId={componenteResaltadoId}
+          />
         </div>
         <div className="col-span-4">
-          <div className="bg-slate-100 border-2 border-dashed border-slate-300 rounded p-6 h-full text-center text-slate-500">
-            Diagrama unilineal — se construye en el Plan 3.
+          <div className="h-full min-h-[400px]">
+            <DiagramaSVG
+              tablero={tablero}
+              nombreCliente={cliente?.nombre}
+              onClicComponente={setComponenteResaltadoId}
+            />
           </div>
         </div>
       </div>
