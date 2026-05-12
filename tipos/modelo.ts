@@ -1,7 +1,8 @@
 // Tipos compartidos entre apps/servidor y apps/web.
-// Para Plan 1 se incluyen solo los tipos necesarios para el flujo de extracción
-// de una foto. Los tipos completos (Cliente, Tablero, etc.) se agregarán
-// en planes posteriores.
+
+// ============================================================================
+// Procedencia y confianza — usado por todos los datos extraídos.
+// ============================================================================
 
 export type FuenteDato =
   | 'foto-claude'
@@ -19,6 +20,10 @@ export interface Procedencia {
   notas?: string;
 }
 
+// ============================================================================
+// Componentes detectados por agentes IA y reconciliados.
+// ============================================================================
+
 export type TipoComponente =
   | 'interruptor-automatico'
   | 'diferencial'
@@ -35,7 +40,6 @@ export type TipoComponente =
 
 export type CalidadFoto = 'buena' | 'aceptable' | 'mala';
 
-// Salida de un solo agente (Claude o OpenAI) tras analizar una foto.
 export interface ResultadoExtraccionAgente {
   calidadFoto: CalidadFoto;
   problemasFoto: string[];
@@ -62,7 +66,15 @@ export interface RotulacionCircuito {
   textoOriginal: string;
 }
 
-// Salida del reconciliador: la verdad consolidada que ve el usuario.
+// Resultado del reconciliador para una sola foto.
+export interface ResultadoExtraccion {
+  fotoId: string;
+  calidadFoto: CalidadFoto;
+  problemasFoto: string[];
+  componentes: ComponenteReconciliado[];
+  rotulacionesLeidas: RotulacionCircuito[];
+}
+
 export interface ComponenteReconciliado {
   id: string;
   tipo: TipoComponente;
@@ -76,12 +88,87 @@ export interface ComponenteReconciliado {
   procedencia: Procedencia;
 }
 
-export interface ResultadoExtraccion {
-  fotoId: string;
+// ============================================================================
+// Cliente — entidad raíz del modelo.
+// ============================================================================
+
+export interface Cliente {
+  id: string;                                 // ULID
+  slug: string;                               // usado en rutas y nombre de carpeta
+  nombre: string;
+  rut?: string;
+  direccion?: string;
+  contactoNombre?: string;
+  contactoTelefono?: string;
+  contactoEmail?: string;
+  creadoEn: string;                           // ISO date
+  actualizadoEn: string;
+  tableros: ResumenTablero[];                 // referencias (id + código + completitud)
+  // interconexiones: las introduce Plan 5.
+}
+
+export interface ResumenTablero {
+  id: string;
+  codigo: string;
+  porcentajeCompletitud: number;
+}
+
+// ============================================================================
+// Tablero — pertenece a un cliente.
+// ============================================================================
+
+export type TipoTablero = 'general' | 'distribucion' | 'comando' | 'otro';
+export type TensionSistema = '220V-mono' | '380V-trif' | '380V/220V-trif-n' | 'pendiente';
+export type EsquemaTierra = 'TT' | 'TN-S' | 'TN-C-S' | 'IT' | 'pendiente';
+
+export interface Tablero {
+  id: string;                                 // ULID
+  slug: string;
+  clienteId: string;
+  codigo: string;                             // "TG", "TD-1", "TD-Cocina"
+  nombre: string;
+  tipo: TipoTablero;
+  ubicacion?: string;
+
+  tensionSistema: TensionSistema;
+  esquemaTierra: EsquemaTierra;
+  potenciaContratadaKW?: number;
+  corrienteNominalA?: number;
+
+  fotos: Foto[];                              // hasta 20
+  componentes: ComponenteReconciliado[];      // acumulado desde todas las fotos
+  pendientes: Pendiente[];
+
+  porcentajeCompletitud: number;              // calculado, sincronizado al guardar
+
+  creadoEn: string;
+  actualizadoEn: string;
+
+  // hallazgosRIC se agrega en Plan 4
+  // circuitos se agrega en Plan 4 (cuando empiezan a derivarse del análisis)
+}
+
+export interface Foto {
+  id: string;                                 // ULID, también es el nombre del archivo
+  nombreOriginal: string;                     // como vino del usuario
+  mimeType: string;
   calidadFoto: CalidadFoto;
   problemasFoto: string[];
-  componentes: ComponenteReconciliado[];
-  rotulacionesLeidas: RotulacionCircuito[];
-  // Discrepancias y datos no leídos quedan reflejados como confianza/notas
-  // en los componentes — no requieren un campo separado en Plan 1.
+  subidaEn: string;                           // ISO
+}
+
+export type CategoriaPendiente =
+  | 'dato-no-observable'
+  | 'discrepancia-agentes'
+  | 'foto-baja-calidad';
+
+export type ResolucionPendiente = 'foto-nueva' | 'entrada-manual' | 'medicion-terreno';
+
+export interface Pendiente {
+  id: string;
+  categoria: CategoriaPendiente;
+  descripcion: string;
+  componenteId?: string;
+  resoluble: ResolucionPendiente;
+  resueltoEn?: string;                        // ISO si fue resuelto
 }
