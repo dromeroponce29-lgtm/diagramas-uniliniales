@@ -128,6 +128,17 @@ describe('almacén Tablero', () => {
     await expect(leerTablero(clienteSlug, t.slug)).rejects.toThrow();
   });
 
+  it('permite guardar espaciosTotales vía actualizarTablero', async () => {
+    const t = await crearTablero(clienteSlug, {
+      codigo: 'TG', nombre: 'X', tipo: 'general',
+      tensionSistema: 'pendiente', esquemaTierra: 'pendiente'
+    });
+    const actualizado = await actualizarTablero(clienteSlug, t.slug, { espaciosTotales: 24 });
+    expect(actualizado.espaciosTotales).toBe(24);
+    const releido = await leerTablero(clienteSlug, t.slug);
+    expect(releido.espaciosTotales).toBe(24);
+  });
+
   it('inicializa circuitos y anotacionesHallazgos como arrays vacíos', async () => {
     const tablero = await crearTablero(clienteSlug, {
       codigo: 'TG', nombre: 'Test', tipo: 'general',

@@ -125,6 +125,7 @@ export async function actualizarTablero(
     ...(parche.esquemaTierra !== undefined && { esquemaTierra: parche.esquemaTierra }),
     ...(parche.potenciaContratadaKW !== undefined && { potenciaContratadaKW: parche.potenciaContratadaKW }),
     ...(parche.corrienteNominalA !== undefined && { corrienteNominalA: parche.corrienteNominalA }),
+    ...(parche.espaciosTotales !== undefined && { espaciosTotales: parche.espaciosTotales }),
     actualizadoEn: new Date().toISOString()
   });
   await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);

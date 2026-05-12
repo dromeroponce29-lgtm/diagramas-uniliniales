@@ -100,7 +100,8 @@ export const EsquemaTableroEntrada = EsquemaTablero
     tensionSistema: z.enum(['220V-mono', '380V-trif', '380V/220V-trif-n', 'pendiente']).default('pendiente'),
     esquemaTierra: z.enum(['TT', 'TN-S', 'TN-C-S', 'IT', 'pendiente']).default('pendiente'),
     potenciaContratadaKW: z.number().positive().optional(),
-    corrienteNominalA: z.number().positive().optional()
+    corrienteNominalA: z.number().positive().optional(),
+    espaciosTotales: z.number().int().positive().optional()
   });
 
 // Para actualizar campos manuales del tablero (todo opcional).
