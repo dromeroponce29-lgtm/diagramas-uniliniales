@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
-import { crearRutaExtraer } from './rutas/extraer.js';
+import { crearRutasClientes } from './rutas/clientes.js';
+import { crearRutasTableros } from './rutas/tableros.js';
 import type { ClienteAgenteIA } from './agentes/interfaz.js';
 
 export interface DepsApp {
@@ -17,7 +18,8 @@ export function crearApp(deps: DepsApp): Express {
     res.json({ estado: 'ok', timestamp: new Date().toISOString() });
   });
 
-  app.use('/api', crearRutaExtraer({
+  app.use('/api', crearRutasClientes());
+  app.use('/api', crearRutasTableros({
     agenteClaude: deps.agenteClaude,
     agenteOpenai: deps.agenteOpenai
   }));
