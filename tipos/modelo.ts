@@ -144,8 +144,9 @@ export interface Tablero {
   creadoEn: string;
   actualizadoEn: string;
 
-  // hallazgosRIC se agrega en Plan 4
-  // circuitos se agrega en Plan 4 (cuando empiezan a derivarse del análisis)
+  espaciosTotales?: number;            // Plan 4 — manual, alimenta regla reserva-minima
+  circuitos: Circuito[];               // Plan 4
+  anotacionesHallazgos: AnotacionHallazgo[];  // Plan 4
 }
 
 export interface Foto {
@@ -171,4 +172,51 @@ export interface Pendiente {
   componenteId?: string;
   resoluble: ResolucionPendiente;
   resueltoEn?: string;                        // ISO si fue resuelto
+}
+
+// ============================================================================
+// Circuitos (Plan 4)
+// ============================================================================
+
+export type UsoCircuito =
+  | 'iluminacion'
+  | 'enchufes'
+  | 'fuerza'
+  | 'calefaccion'
+  | 'climatizacion'
+  | 'cocina'
+  | 'otro'
+  | 'pendiente';
+
+export interface Circuito {
+  id: string;                          // ULID
+  numero: number;                      // correlativo en el tablero (1, 2, 3, ...)
+  proteccionComponenteId: string;      // id del automático que protege el circuito
+  diferencialComponenteId?: string;    // id del diferencial aguas arriba (opcional)
+  destino: string;                     // texto libre o "pendiente"
+  uso: UsoCircuito;
+  seccionConductorMM2?: number;
+  longitudM?: number;
+  cargaW?: number;
+  rotulacionLeida?: string;
+  procedencia: Procedencia;
+}
+
+// ============================================================================
+// Anotaciones de hallazgos RIC (Plan 4)
+// ============================================================================
+
+export type TipoAnotacionHallazgo =
+  | 'no-aplica'
+  | 'levantamiento-terreno'
+  | 'nota-libre';
+
+export interface AnotacionHallazgo {
+  id: string;                          // ULID
+  reglaId: string;                     // ej. 'ric.tablero.dps-presente'
+  componenteId?: string;
+  circuitoId?: string;
+  tipo: TipoAnotacionHallazgo;
+  justificacion: string;
+  creadoEn: string;                    // ISO
 }

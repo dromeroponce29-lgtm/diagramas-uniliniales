@@ -45,6 +45,30 @@ const EsquemaPendiente = z.object({
   resueltoEn: z.string().optional()
 });
 
+const EsquemaCircuito = z.object({
+  id: z.string().min(1),
+  numero: z.number().int().positive(),
+  proteccionComponenteId: z.string().min(1),
+  diferencialComponenteId: z.string().min(1).optional(),
+  destino: z.string(),
+  uso: z.enum(['iluminacion', 'enchufes', 'fuerza', 'calefaccion', 'climatizacion', 'cocina', 'otro', 'pendiente']),
+  seccionConductorMM2: z.number().positive().optional(),
+  longitudM: z.number().positive().optional(),
+  cargaW: z.number().positive().optional(),
+  rotulacionLeida: z.string().optional(),
+  procedencia: EsquemaProcedencia
+});
+
+const EsquemaAnotacionHallazgo = z.object({
+  id: z.string().min(1),
+  reglaId: z.string().min(1),
+  componenteId: z.string().min(1).optional(),
+  circuitoId: z.string().min(1).optional(),
+  tipo: z.enum(['no-aplica', 'levantamiento-terreno', 'nota-libre']),
+  justificacion: z.string(),
+  creadoEn: z.string()
+});
+
 export const EsquemaTablero = z.object({
   id: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9-]+$/),
@@ -57,12 +81,15 @@ export const EsquemaTablero = z.object({
   esquemaTierra: z.enum(['TT', 'TN-S', 'TN-C-S', 'IT', 'pendiente']),
   potenciaContratadaKW: z.number().positive().optional(),
   corrienteNominalA: z.number().positive().optional(),
+  espaciosTotales: z.number().int().positive().optional(),
   fotos: z.array(EsquemaFoto),
   componentes: z.array(EsquemaComponenteReconciliado),
   pendientes: z.array(EsquemaPendiente),
   porcentajeCompletitud: z.number().int().min(0).max(100),
   creadoEn: z.string(),
-  actualizadoEn: z.string()
+  actualizadoEn: z.string(),
+  circuitos: z.array(EsquemaCircuito).default([]),
+  anotacionesHallazgos: z.array(EsquemaAnotacionHallazgo).default([])
 });
 
 // Para input al crear un tablero.
@@ -73,7 +100,8 @@ export const EsquemaTableroEntrada = EsquemaTablero
     tensionSistema: z.enum(['220V-mono', '380V-trif', '380V/220V-trif-n', 'pendiente']).default('pendiente'),
     esquemaTierra: z.enum(['TT', 'TN-S', 'TN-C-S', 'IT', 'pendiente']).default('pendiente'),
     potenciaContratadaKW: z.number().positive().optional(),
-    corrienteNominalA: z.number().positive().optional()
+    corrienteNominalA: z.number().positive().optional(),
+    espaciosTotales: z.number().int().positive().optional()
   });
 
 // Para actualizar campos manuales del tablero (todo opcional).
@@ -85,3 +113,5 @@ export const EsquemaComponenteActualizacion = EsquemaComponenteReconciliado.part
 export type TableroEntrada = z.infer<typeof EsquemaTableroEntrada>;
 export type TableroActualizacion = z.infer<typeof EsquemaTableroActualizacion>;
 export type ComponenteActualizacion = z.infer<typeof EsquemaComponenteActualizacion>;
+
+export { EsquemaCircuito, EsquemaAnotacionHallazgo };

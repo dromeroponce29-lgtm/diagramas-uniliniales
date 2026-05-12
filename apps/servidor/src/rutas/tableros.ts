@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { ZodError } from 'zod';
+import { ZodError, z } from 'zod';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { extname } from 'node:path';
 import {
   EsquemaTableroEntrada,
   EsquemaTableroActualizacion,
-  EsquemaComponenteActualizacion
+  EsquemaComponenteActualizacion,
+  EsquemaCircuito,
+  EsquemaAnotacionHallazgo
 } from '../esquemas/tablero.js';
 import {
   crearTablero,
@@ -15,7 +17,9 @@ import {
   actualizarTablero,
   eliminarTablero,
   agregarFotoYComponentes,
-  actualizarComponente
+  actualizarComponente,
+  reemplazarCircuitos,
+  reemplazarAnotacionesHallazgos
 } from '../almacen/tablero.js';
 import { reconciliar } from '../agentes/reconciliador.js';
 import { dirFotos, archivoFoto, dirExtracciones, archivoExtraccion } from '../almacen/rutas.js';
@@ -181,6 +185,34 @@ export function crearRutasTableros(deps: Deps): Router {
     try {
       const parche = EsquemaComponenteActualizacion.parse(req.body);
       const tablero = await actualizarComponente(req.params.c!, req.params.t!, req.params.id!, parche);
+      res.json(tablero);
+    } catch (e) {
+      if (e instanceof ZodError) {
+        res.status(400).json({ error: 'Datos inválidos', detalles: e.errors });
+        return;
+      }
+      res.status(404).json({ error: String(e) });
+    }
+  });
+
+  router.put('/clientes/:c/tableros/:t/circuitos', async (req, res) => {
+    try {
+      const payload = z.object({ circuitos: z.array(EsquemaCircuito) }).parse(req.body);
+      const tablero = await reemplazarCircuitos(req.params.c!, req.params.t!, payload.circuitos);
+      res.json(tablero);
+    } catch (e) {
+      if (e instanceof ZodError) {
+        res.status(400).json({ error: 'Datos inválidos', detalles: e.errors });
+        return;
+      }
+      res.status(404).json({ error: String(e) });
+    }
+  });
+
+  router.put('/clientes/:c/tableros/:t/anotaciones-ric', async (req, res) => {
+    try {
+      const payload = z.object({ anotaciones: z.array(EsquemaAnotacionHallazgo) }).parse(req.body);
+      const tablero = await reemplazarAnotacionesHallazgos(req.params.c!, req.params.t!, payload.anotaciones);
       res.json(tablero);
     } catch (e) {
       if (e instanceof ZodError) {

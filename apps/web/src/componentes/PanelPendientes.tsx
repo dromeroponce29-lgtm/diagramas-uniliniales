@@ -29,22 +29,26 @@ export function PanelPendientes({ tablero, clienteSlug, tableroSlug }: Props) {
   const [esquemaTierra, setEsquemaTierra] = useState<EsquemaTierra>(tablero.esquemaTierra);
   const [potencia, setPotencia] = useState<string>(tablero.potenciaContratadaKW?.toString() ?? '');
   const [corriente, setCorriente] = useState<string>(tablero.corrienteNominalA?.toString() ?? '');
+  const [espaciosTotales, setEspaciosTotales] = useState<string>(tablero.espaciosTotales?.toString() ?? '');
 
   useEffect(() => {
     setTensionSistema(tablero.tensionSistema);
     setEsquemaTierra(tablero.esquemaTierra);
     setPotencia(tablero.potenciaContratadaKW?.toString() ?? '');
     setCorriente(tablero.corrienteNominalA?.toString() ?? '');
+    setEspaciosTotales(tablero.espaciosTotales?.toString() ?? '');
   }, [tablero]);
 
   async function alGuardar() {
     const pNum = potencia.trim() ? Number(potencia) : undefined;
     const cNum = corriente.trim() ? Number(corriente) : undefined;
+    const etNum = espaciosTotales.trim() ? Number(espaciosTotales) : undefined;
     await actualizarDatos(clienteSlug, tableroSlug, {
       tensionSistema,
       esquemaTierra,
       ...(pNum !== undefined && !Number.isNaN(pNum) && { potenciaContratadaKW: pNum }),
-      ...(cNum !== undefined && !Number.isNaN(cNum) && { corrienteNominalA: cNum })
+      ...(cNum !== undefined && !Number.isNaN(cNum) && { corrienteNominalA: cNum }),
+      ...(etNum !== undefined && !Number.isNaN(etNum) && { espaciosTotales: etNum })
     });
   }
 
@@ -78,6 +82,16 @@ export function PanelPendientes({ tablero, clienteSlug, tableroSlug }: Props) {
           <span className="block text-xs font-medium text-slate-700 mb-1">Corriente nominal (A)</span>
           <input value={corriente} onChange={e => setCorriente(e.target.value)} type="number" step="0.1"
             className="w-full px-2 py-1 border border-slate-300 rounded text-sm" />
+        </label>
+        <label className="block text-sm">
+          Espacios totales del tablero
+          <input
+            type="number"
+            min="1"
+            value={espaciosTotales}
+            onChange={e => setEspaciosTotales(e.target.value)}
+            className="mt-1 w-24 border rounded px-2 py-1"
+          />
         </label>
       </div>
 

@@ -62,6 +62,8 @@ export async function crearTablero(slugCliente: string, entrada: TableroEntrada)
     esquemaTierra: entrada.esquemaTierra ?? 'pendiente',
     ...(entrada.potenciaContratadaKW !== undefined && { potenciaContratadaKW: entrada.potenciaContratadaKW }),
     ...(entrada.corrienteNominalA !== undefined && { corrienteNominalA: entrada.corrienteNominalA }),
+    circuitos: [],
+    anotacionesHallazgos: [],
     fotos: [],
     componentes: [],
     pendientes: [],
@@ -123,6 +125,7 @@ export async function actualizarTablero(
     ...(parche.esquemaTierra !== undefined && { esquemaTierra: parche.esquemaTierra }),
     ...(parche.potenciaContratadaKW !== undefined && { potenciaContratadaKW: parche.potenciaContratadaKW }),
     ...(parche.corrienteNominalA !== undefined && { corrienteNominalA: parche.corrienteNominalA }),
+    ...(parche.espaciosTotales !== undefined && { espaciosTotales: parche.espaciosTotales }),
     actualizadoEn: new Date().toISOString()
   });
   await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);
@@ -207,6 +210,38 @@ export async function actualizarComponente(
   const actualizado = sincronizarCompletitud({
     ...actual,
     componentes: nuevosComponentes,
+    actualizadoEn: new Date().toISOString()
+  });
+  await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);
+  await sincronizarCliente(slugCliente);
+  return actualizado;
+}
+
+export async function reemplazarCircuitos(
+  slugCliente: string,
+  slugTablero: string,
+  circuitos: Tablero['circuitos']
+): Promise<Tablero> {
+  const actual = await leerTablero(slugCliente, slugTablero);
+  const actualizado: Tablero = sincronizarCompletitud({
+    ...actual,
+    circuitos,
+    actualizadoEn: new Date().toISOString()
+  });
+  await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);
+  await sincronizarCliente(slugCliente);
+  return actualizado;
+}
+
+export async function reemplazarAnotacionesHallazgos(
+  slugCliente: string,
+  slugTablero: string,
+  anotaciones: Tablero['anotacionesHallazgos']
+): Promise<Tablero> {
+  const actual = await leerTablero(slugCliente, slugTablero);
+  const actualizado: Tablero = sincronizarCompletitud({
+    ...actual,
+    anotacionesHallazgos: anotaciones,
     actualizadoEn: new Date().toISOString()
   });
   await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);
