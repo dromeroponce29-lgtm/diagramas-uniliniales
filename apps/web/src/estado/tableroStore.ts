@@ -12,6 +12,8 @@ interface TableroStore {
   actualizarDatos(clienteSlug: string, tableroSlug: string, datos: Parameters<typeof apiTableros.actualizar>[2]): Promise<void>;
   subirFoto(clienteSlug: string, tableroSlug: string, archivo: File): Promise<void>;
   actualizarComponente(clienteSlug: string, tableroSlug: string, componenteId: string, datos: unknown): Promise<void>;
+  reemplazarCircuitos(clienteSlug: string, tableroSlug: string, circuitos: import('@tipos/modelo').Circuito[]): Promise<void>;
+  reemplazarAnotacionesHallazgos(clienteSlug: string, tableroSlug: string, anotaciones: import('@tipos/modelo').AnotacionHallazgo[]): Promise<void>;
   limpiar(): void;
 }
 
@@ -48,6 +50,16 @@ export const useTableroStore = create<TableroStore>(set => ({
 
   async actualizarComponente(clienteSlug, tableroSlug, componenteId, datos) {
     const tablero = await apiTableros.actualizarComponente(clienteSlug, tableroSlug, componenteId, datos);
+    set({ tablero });
+  },
+
+  async reemplazarCircuitos(clienteSlug, tableroSlug, circuitos) {
+    const tablero = await apiTableros.reemplazarCircuitos(clienteSlug, tableroSlug, circuitos);
+    set({ tablero });
+  },
+
+  async reemplazarAnotacionesHallazgos(clienteSlug, tableroSlug, anotaciones) {
+    const tablero = await apiTableros.reemplazarAnotacionesHallazgos(clienteSlug, tableroSlug, anotaciones);
     set({ tablero });
   },
 
