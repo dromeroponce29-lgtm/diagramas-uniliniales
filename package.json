@@ -14,7 +14,9 @@
     "build": "npm-run-all --sequential build:servidor build:web",
     "build:servidor": "npm --workspace apps/servidor run build",
     "build:web": "npm --workspace apps/web run build",
-    "test": "npm --workspace apps/servidor run test"
+    "test": "npm-run-all --sequential test:servidor test:web",
+    "test:servidor": "npm --workspace apps/servidor run test",
+    "test:web": "npm --workspace apps/web run test"
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5",
