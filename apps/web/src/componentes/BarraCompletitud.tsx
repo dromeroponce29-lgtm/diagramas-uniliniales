@@ -1,6 +1,7 @@
 import type { Tablero } from '@tipos/modelo';
 import { evaluarRIC } from '../../../../tipos/ric/motor.js';
 import { derivarLevantamientosTerreno } from '../../../../tipos/ric/derivar-levantamientos.js';
+import { tableroEstaVacio } from '../../../../tipos/ric/empty-state.js';
 
 interface Props {
   tablero: Tablero;
@@ -30,23 +31,29 @@ export function BarraCompletitud({ tablero }: Props) {
       <div className="w-full h-2 bg-slate-200 rounded overflow-hidden">
         <div className={`h-full transition-all ${colorBarra}`} style={{ width: `${pct}%` }} />
       </div>
-      {(() => {
-        const hallazgosNoCumple = evaluarRIC(tablero).filter(h =>
-          h.resultado === 'no-cumple' &&
-          !tablero.anotacionesHallazgos.some(a =>
-            a.tipo === 'no-aplica' &&
-            a.reglaId === h.reglaId &&
-            a.componenteId === h.componenteId &&
-            a.circuitoId === h.circuitoId
-          )
-        ).length;
-        const terreno = derivarLevantamientosTerreno(tablero).length;
-        return (
-          <div className="text-xs text-slate-600 mt-1">
-            {hallazgosNoCumple} hallazgos RIC sin resolver · {terreno} levantamientos en terreno
-          </div>
-        );
-      })()}
+      {tableroEstaVacio(tablero) ? (
+        <div className="text-xs text-slate-500 mt-1 italic">
+          Tablero sin datos — completa la información para empezar
+        </div>
+      ) : (
+        (() => {
+          const hallazgosNoCumple = evaluarRIC(tablero).filter(h =>
+            h.resultado === 'no-cumple' &&
+            !tablero.anotacionesHallazgos.some(a =>
+              a.tipo === 'no-aplica' &&
+              a.reglaId === h.reglaId &&
+              a.componenteId === h.componenteId &&
+              a.circuitoId === h.circuitoId
+            )
+          ).length;
+          const terreno = derivarLevantamientosTerreno(tablero).length;
+          return (
+            <div className="text-xs text-slate-600 mt-1">
+              {hallazgosNoCumple} hallazgos RIC sin resolver · {terreno} levantamientos en terreno
+            </div>
+          );
+        })()
+      )}
     </div>
   );
 }
