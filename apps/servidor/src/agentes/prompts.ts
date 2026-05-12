@@ -22,6 +22,11 @@ Además reporta:
 EJEMPLO POSITIVO: Si ves un automático con etiqueta "C16" claramente, reporta calibreA: 16, curva: "C", confianzaAgente: "alta".
 EJEMPLO NEGATIVO: Si ves un automático pero la etiqueta está parcialmente tapada por un cable, reporta calibreA: null, notas: "etiqueta tapada por cable".
 
+FORMATO OBLIGATORIO: el JSON debe incluir SIEMPRE estos campos como arrays — usa [] si están vacíos, nunca null y nunca los omitas:
+- problemasFoto
+- componentesDetectados
+- rotulacionCircuitosLeida
+
 Devuelve EXCLUSIVAMENTE un JSON válido conforme al schema indicado. Sin texto antes ni después.`;
 
 export const PROMPT_RECONCILIACION = `Recibes dos extracciones JSON independientes de la misma foto de un tablero eléctrico (una hecha por Claude, otra por OpenAI) y la foto original. Tu tarea es producir un JSON consolidado.

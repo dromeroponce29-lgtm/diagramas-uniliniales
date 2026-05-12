@@ -37,11 +37,16 @@ export const EsquemaRotulacion = z.object({
   textoOriginal: z.string()
 });
 
+// Los agentes a veces omiten arrays o envían null cuando no detectan nada.
+// Coercionamos a [] para no rechazar la extracción completa por un campo vacío.
+const arrayTolerante = <T extends z.ZodTypeAny>(esquema: T) =>
+  z.preprocess(v => (v == null ? [] : v), z.array(esquema));
+
 export const EsquemaExtraccionAgente = z.object({
   calidadFoto: z.enum(['buena', 'aceptable', 'mala']),
-  problemasFoto: z.array(z.string()),
-  componentesDetectados: z.array(EsquemaComponenteDetectado),
-  rotulacionCircuitosLeida: z.array(EsquemaRotulacion)
+  problemasFoto: arrayTolerante(z.string()),
+  componentesDetectados: arrayTolerante(EsquemaComponenteDetectado),
+  rotulacionCircuitosLeida: arrayTolerante(EsquemaRotulacion)
 });
 
 export type ExtraccionAgente = z.infer<typeof EsquemaExtraccionAgente>;
