@@ -85,6 +85,7 @@ export interface ComponenteReconciliado {
   curva?: 'B' | 'C' | 'D' | 'K';
   sensibilidadMA?: number;
   posicionEnTablero?: { fila: number; columna: number };
+  capacidadCortocircuitoKA?: number;
   procedencia: Procedencia;
 }
 
@@ -105,6 +106,10 @@ export interface Cliente {
   actualizadoEn: string;
   tableros: ResumenTablero[];                 // referencias (id + código + completitud)
   // interconexiones: las introduce Plan 5.
+  instaladorPredeterminadoNombre?: string;
+  instaladorPredeterminadoRUT?: string;
+  instaladorPredeterminadoClaseSEC?: ClaseSEC;
+  proyectoNombrePredeterminado?: string;
 }
 
 export interface ResumenTablero {
@@ -147,6 +152,15 @@ export interface Tablero {
   espaciosTotales?: number;            // Plan 4 — manual, alimenta regla reserva-minima
   circuitos: Circuito[];               // Plan 4
   anotacionesHallazgos: AnotacionHallazgo[];  // Plan 4
+
+  // Plan 5 — RIC N°18
+  frecuenciaHz?: number;
+  capacidadNominalA?: number;
+  notasGenerales?: string;
+  acometida?: DatosAcometida;
+  alimentadorEntrada?: DatosAlimentadorEntrada;
+  puestaATierra?: DatosPuestaATierra;
+  vineta?: DatosVineta;
 }
 
 export interface Foto {
@@ -198,6 +212,11 @@ export interface Circuito {
   seccionConductorMM2?: number;
   longitudM?: number;
   cargaW?: number;
+  canalizacionTipo?: TipoCanalizacion;
+  canalizacionDiametroMM?: number;
+  canalizacionMaterial?: MaterialCanalizacion;
+  capacidadCorrienteA?: number;
+  corrienteA?: number;
   rotulacionLeida?: string;
   procedencia: Procedencia;
 }
@@ -219,4 +238,58 @@ export interface AnotacionHallazgo {
   tipo: TipoAnotacionHallazgo;
   justificacion: string;
   creadoEn: string;                    // ISO
+}
+
+// ============================================================================
+// Datos eléctricos extendidos (Plan 5 — RIC N°18)
+// ============================================================================
+
+export type TipoCanalizacion =
+  | 'EMT' | 'PVC-rigido' | 'PVC-flexible' | 'bandeja' | 'libre' | 'subterranea' | 'otro';
+
+export type MaterialCanalizacion =
+  | 'acero' | 'PVC' | 'aluminio' | 'fibrocemento' | 'otro';
+
+export type TipoAcometida =
+  | 'aerea' | 'subterranea' | 'desde-tablero-superior' | 'pendiente';
+
+export type TipoElectrodoTierra =
+  | 'jabalina' | 'malla' | 'multielectrodo' | 'pendiente';
+
+export type ClaseSEC = 'A' | 'B' | 'C' | 'D';
+
+export interface DatosAcometida {
+  tipo: TipoAcometida;
+  ubicacion?: string;
+  tableroOrigenId?: string;
+  notas?: string;
+}
+
+export interface DatosAlimentadorEntrada {
+  seccionConductorMM2?: number;
+  longitudM?: number;
+  canalizacionTipo?: TipoCanalizacion;
+  canalizacionDiametroMM?: number;
+  canalizacionMaterial?: MaterialCanalizacion;
+  capacidadCorrienteA?: number;
+  conductoresPorFase?: number;
+}
+
+export interface DatosPuestaATierra {
+  resistenciaOhmMedida?: number;
+  resistenciaOhmProyectada?: number;
+  instrumentoMedicion?: string;
+  fechaMedicion?: string;
+  tipoElectrodo?: TipoElectrodoTierra;
+  notas?: string;
+}
+
+export interface DatosVineta {
+  numeroLamina?: string;
+  revision?: string;
+  fechaEmision?: string;
+  instaladorNombre?: string;
+  instaladorRUT?: string;
+  instaladorClaseSEC?: ClaseSEC;
+  proyectoNombre?: string;
 }
