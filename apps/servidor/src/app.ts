@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
-import { crearRutaExtraer } from './rutas/extraer.js';
+import { crearRutasClientes } from './rutas/clientes.js';
 import type { ClienteAgenteIA } from './agentes/interfaz.js';
 
 export interface DepsApp {
@@ -17,10 +17,10 @@ export function crearApp(deps: DepsApp): Express {
     res.json({ estado: 'ok', timestamp: new Date().toISOString() });
   });
 
-  app.use('/api', crearRutaExtraer({
-    agenteClaude: deps.agenteClaude,
-    agenteOpenai: deps.agenteOpenai
-  }));
+  app.use('/api', crearRutasClientes());
+
+  // Las rutas de tableros (incluido /fotos) se agregan en la Tarea 8.
+  void deps; // dependencias mantenidas para inyección en Tarea 8.
 
   return app;
 }
