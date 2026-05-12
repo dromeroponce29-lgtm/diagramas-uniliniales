@@ -1,13 +1,28 @@
 {
   "name": "diagramas-uniliniales",
-  "version": "1.0.0",
-  "description": "genera diagramas uniliniales elctricos a apartir de fotografia del tablero ]",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "Generador de diagramas unilineales eléctricos a partir de fotografías del tablero.",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:servidor": "npm --workspace apps/servidor run dev",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev": "npm-run-all --parallel dev:servidor dev:web",
+    "build": "npm-run-all --sequential build:servidor build:web",
+    "build:servidor": "npm --workspace apps/servidor run build",
+    "build:web": "npm --workspace apps/web run build",
+    "test": "npm --workspace apps/servidor run test"
   },
-  "keywords": [],
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "author": "Daniel Romero",
-  "license": "ISC",
-  "type": "commonjs"
+  "license": "ISC"
 }
