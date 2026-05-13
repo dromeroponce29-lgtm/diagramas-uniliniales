@@ -32,6 +32,7 @@ export const EsquemaPlanNormalizacion = z.object({
   notas: z.string().max(2000).optional()
 });
 
+// Entrada del PUT: el cliente envía partidas+notas+estado+IVA; el backend recalcula totales y actualizadoEn.
 export const EsquemaPlanActualizacion = z.object({
   estado: EsquemaEstadoPlan.optional(),
   incluyeIVA: z.boolean().optional(),
@@ -40,6 +41,7 @@ export const EsquemaPlanActualizacion = z.object({
   notas: z.string().max(2000).optional()
 });
 
+// Entrada del POST: { autoSugerir: boolean }
 export const EsquemaPlanCreacion = z.object({
   autoSugerir: z.boolean().default(true)
 });

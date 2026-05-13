@@ -162,7 +162,7 @@ export interface Tablero {
   puestaATierra?: DatosPuestaATierra;
   vineta?: DatosVineta;
 
-  planesNormalizacion: PlanNormalizacion[];
+  planesNormalizacion?: PlanNormalizacion[];
 }
 
 export interface Foto {
