@@ -31,7 +31,7 @@ function circuitoTieneFaltantes(c: Circuito): string[] {
 }
 
 function nombreCorto(c: ComponenteReconciliado): string {
-  const partes = [c.tipo];
+  const partes: string[] = [c.tipo];
   if (c.calibreA) partes.push(`${c.calibreA}A`);
   if (c.polos) partes.push(`${c.polos}P`);
   if (c.curva) partes.push(c.curva);

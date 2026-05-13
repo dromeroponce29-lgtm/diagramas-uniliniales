@@ -16,7 +16,7 @@ function tableroBase(): Tablero {
 
 async function abrirWb(buf: Buffer): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buf);
+  await wb.xlsx.load(buf as unknown as ArrayBuffer);
   return wb;
 }
 
