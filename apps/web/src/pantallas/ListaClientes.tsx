@@ -92,9 +92,12 @@ export function ListaClientes() {
               </ul>
             )}
 
-            <div className="mt-3">
+            <div className="mt-3 flex gap-3">
               <Link to={`/clientes/${c.slug}/nuevo-tablero`} className="text-sm text-blue-600 hover:underline">
                 + Agregar tablero
+              </Link>
+              <Link to={`/clientes/${c.slug}/catalogo`} className="text-sm text-blue-600 hover:underline">
+                Catálogo →
               </Link>
             </div>
           </article>

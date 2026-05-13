@@ -161,6 +161,8 @@ export interface Tablero {
   alimentadorEntrada?: DatosAlimentadorEntrada;
   puestaATierra?: DatosPuestaATierra;
   vineta?: DatosVineta;
+
+  planesNormalizacion?: PlanNormalizacion[];
 }
 
 export interface Foto {
@@ -292,4 +294,65 @@ export interface DatosVineta {
   instaladorRUT?: string;
   instaladorClaseSEC?: ClaseSEC;
   proyectoNombre?: string;
+}
+
+// ============================================================================
+// Catálogo de materiales y mano de obra (Plan 6)
+// ============================================================================
+
+export type UnidadCatalogo = 'ud' | 'm' | 'kg' | 'h' | 'gl';
+
+export type CategoriaCatalogo =
+  | 'proteccion'
+  | 'conductor'
+  | 'ducteria'
+  | 'accesorio'
+  | 'mano-de-obra'
+  | 'servicio'
+  | 'otro';
+
+export interface ItemCatalogo {
+  id: string;
+  codigo: string;
+  descripcion: string;
+  tipo: 'material' | 'labor';
+  unidad: UnidadCatalogo;
+  precioUnitarioCLP: number;
+  categoria: CategoriaCatalogo;
+  notas?: string;
+}
+
+// ============================================================================
+// Plan de normalización (Plan 6) — snapshot persistido
+// ============================================================================
+
+export type EstadoPlan = 'borrador' | 'enviado' | 'aceptado' | 'rechazado';
+
+export interface PartidaPlan {
+  id: string;
+  itemCodigo: string;
+  itemDescripcion: string;
+  unidad: UnidadCatalogo;
+  precioUnitarioCLP: number;
+  cantidad: number;
+  totalCLP: number;
+  hallazgoReglaId?: string;
+  hallazgoComponenteId?: string;
+  hallazgoCircuitoId?: string;
+  notas?: string;
+}
+
+export interface PlanNormalizacion {
+  id: string;
+  numero: number;
+  creadoEn: string;
+  actualizadoEn: string;
+  estado: EstadoPlan;
+  partidas: PartidaPlan[];
+  incluyeIVA: boolean;
+  ivaPct: number;
+  subtotalCLP: number;
+  ivaCLP: number;
+  totalCLP: number;
+  notas?: string;
 }

@@ -31,6 +31,10 @@ export function archivoTablero(slugCliente: string, slugTablero: string): string
   return join(dirTablero(slugCliente, slugTablero), 'tablero.json');
 }
 
+export function archivoCatalogo(slugCliente: string): string {
+  return join(dirCliente(slugCliente), 'catalogo.json');
+}
+
 export function dirFotos(slugCliente: string, slugTablero: string): string {
   return join(dirTablero(slugCliente, slugTablero), 'fotos');
 }
