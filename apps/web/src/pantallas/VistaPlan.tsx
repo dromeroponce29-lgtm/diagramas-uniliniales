@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { PlanNormalizacion, ItemCatalogo } from '@tipos/modelo';
-import { apiPlanes, apiCatalogo } from '../api/cliente.js';
+import { apiPlanes, apiCatalogo, apiTableros } from '../api/cliente.js';
+import { evaluarRIC } from '../../../../tipos/ric/motor.js';
+import { sugerirPartidasDesdeHallazgos } from '../../../../tipos/ric/recetas.js';
 
 function clp(n: number): string { return n.toLocaleString('es-CL'); }
 
@@ -120,7 +122,35 @@ export function VistaPlan() {
       </div>
 
       <section className="bg-white border rounded p-3">
-        <h2 className="font-semibold mb-2">Partidas</h2>
+        <h2 className="font-semibold mb-2">Partidas
+          <button
+            onClick={async () => {
+              if (!confirm('Esto reemplazará todas las partidas del plan por las sugeridas a partir de los hallazgos actuales. ¿Continuar?')) return;
+              if (!plan || !clienteSlug || !tableroSlug) return;
+              try {
+                const tablero = await apiTableros.leer(clienteSlug, tableroSlug);
+                const hallazgos = evaluarRIC(tablero).filter(h => h.resultado === 'no-cumple');
+                const sugeridas = sugerirPartidasDesdeHallazgos(hallazgos, catalogo);
+                const partidas = sugeridas.map(s => ({
+                  itemCodigo: s.itemCatalogo.codigo,
+                  itemDescripcion: s.itemCatalogo.descripcion,
+                  unidad: s.itemCatalogo.unidad,
+                  precioUnitarioCLP: s.itemCatalogo.precioUnitarioCLP,
+                  cantidad: s.cantidad,
+                  hallazgoReglaId: s.hallazgo.reglaId,
+                  ...(s.hallazgo.componenteId && { hallazgoComponenteId: s.hallazgo.componenteId }),
+                  ...(s.hallazgo.circuitoId && { hallazgoCircuitoId: s.hallazgo.circuitoId }),
+                  ...(s.notasReceta && { notas: s.notasReceta })
+                }));
+                const actualizado = await apiPlanes.actualizar(clienteSlug, tableroSlug, plan.id, { partidas });
+                setPlan(actualizado);
+              } catch (e) {
+                setError(String(e));
+              }
+            }}
+            className="ml-2 text-sm text-blue-600 hover:underline font-normal"
+          >Re-sugerir desde hallazgos</button>
+        </h2>
         {plan.partidas.length === 0 ? (
           <p className="text-slate-500 italic text-sm">Sin partidas en este plan.</p>
         ) : (
