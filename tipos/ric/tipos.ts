@@ -29,7 +29,9 @@ export type CategoriaLevantamiento =
   | 'medicion'           // requiere instrumento
   | 'lectura-etiqueta'   // basta con leer la placa del equipo
   | 'inspeccion-visual'  // observación directa
-  | 'consulta-cliente';  // pedir al cliente
+  | 'consulta-cliente'   // pedir al cliente
+  | 'prueba-funcional'   // accionar el componente y verificar
+  | 'indagatorio';       // verificar si el elemento existe en el tablero
 
 export interface LevantamientoTerreno {
   id: string;                          // estable, derivado de la fuente

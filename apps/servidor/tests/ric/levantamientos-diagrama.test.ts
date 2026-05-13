@@ -70,7 +70,7 @@ describe('levantamientosParaDiagrama', () => {
     expect(items.length).toBeGreaterThan(0);
     for (const i of items) {
       expect(i.descripcion).toBeTruthy();
-      expect(['medicion', 'lectura-etiqueta', 'inspeccion-visual', 'consulta-cliente']).toContain(i.categoria);
+      expect(['medicion', 'lectura-etiqueta', 'inspeccion-visual', 'consulta-cliente', 'prueba-funcional', 'indagatorio']).toContain(i.categoria);
       expect(['alta', 'media', 'baja']).toContain(i.prioridad);
     }
   });
@@ -87,5 +87,72 @@ describe('levantamientosParaDiagrama', () => {
     const items = levantamientosParaDiagrama(tableroVacio());
     const rTierra = items.find(i => i.ruta === 'tablero.puestaATierra.resistenciaOhmMedida');
     expect(rTierra?.instrumentoSugerido).toMatch(/telur/i);
+  });
+
+  it('emite ítems indagatorios para elementos generales del tablero (luces piloto, paradas emergencia, borneras)', () => {
+    const items = levantamientosParaDiagrama(tableroVacio());
+    const rutas = items.map(i => i.ruta);
+    expect(rutas).toContain('tablero.lucesPiloto');
+    expect(rutas).toContain('tablero.paradasEmergencia');
+    expect(rutas).toContain('tablero.borneras');
+    expect(rutas).toContain('tablero.transformadorControl');
+    // Todos esos son categoría 'indagatorio'
+    expect(items.find(i => i.ruta === 'tablero.lucesPiloto')?.categoria).toBe('indagatorio');
+  });
+
+  it('emite pruebas funcionales por cada diferencial (botón TEST, corriente y tiempos de disparo)', () => {
+    const t = tableroVacio();
+    t.componentes = [{
+      id: 'd1', tipo: 'diferencial', polos: 2, sensibilidadMA: 30,
+      procedencia: { fuente: 'manual', confianza: 'alta' }
+    }];
+    const items = levantamientosParaDiagrama(t);
+    const rutasDifer = items.filter(i => i.componenteId === 'd1').map(i => i.ruta);
+    expect(rutasDifer).toContain('componente.d1.pruebaBotonTest');
+    expect(rutasDifer).toContain('componente.d1.corrienteDisparoMA');
+    expect(rutasDifer).toContain('componente.d1.tiempoDisparoIDnMs');
+    // Botón TEST es prueba-funcional
+    expect(items.find(i => i.ruta === 'componente.d1.pruebaBotonTest')?.categoria).toBe('prueba-funcional');
+  });
+
+  it('emite parámetros específicos por DPS (tipo, In max kA, Up kV)', () => {
+    const t = tableroVacio();
+    t.componentes = [{
+      id: 'dps1', tipo: 'dps',
+      procedencia: { fuente: 'manual', confianza: 'alta' }
+    }];
+    const items = levantamientosParaDiagrama(t);
+    const rutasDps = items.filter(i => i.componenteId === 'dps1').map(i => i.ruta);
+    expect(rutasDps).toContain('componente.dps1.tipoDPS');
+    expect(rutasDps).toContain('componente.dps1.inMaxKA');
+    expect(rutasDps).toContain('componente.dps1.upKV');
+  });
+
+  it('emite pruebas eléctricas por cada circuito (megger MΩ y continuidad PE)', () => {
+    const t = tableroVacio();
+    t.circuitos = [{
+      id: 'c1', numero: 1, proteccionComponenteId: 'a1',
+      uso: 'iluminacion',
+      procedencia: { fuente: 'manual', confianza: 'alta' }
+    }];
+    const items = levantamientosParaDiagrama(t);
+    const rutasC1 = items.filter(i => i.circuitoId === 'c1').map(i => i.ruta);
+    expect(rutasC1).toContain('circuito.c1.aislamientoMOhm');
+    expect(rutasC1).toContain('circuito.c1.continuidadPEOhm');
+  });
+
+  it('emite datos de placa de motor + contactor + relé térmico para circuitos de fuerza', () => {
+    const t = tableroVacio();
+    t.circuitos = [{
+      id: 'cF', numero: 5, proteccionComponenteId: 'a5',
+      uso: 'fuerza',
+      procedencia: { fuente: 'manual', confianza: 'alta' }
+    }];
+    const items = levantamientosParaDiagrama(t);
+    const rutasFuerza = items.filter(i => i.circuitoId === 'cF').map(i => i.ruta);
+    expect(rutasFuerza).toContain('circuito.cF.motor.hp');
+    expect(rutasFuerza).toContain('circuito.cF.motor.kw');
+    expect(rutasFuerza).toContain('circuito.cF.contactor');
+    expect(rutasFuerza).toContain('circuito.cF.releTermico');
   });
 });
