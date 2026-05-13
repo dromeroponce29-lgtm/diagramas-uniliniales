@@ -165,6 +165,7 @@ export interface Tablero {
   vineta?: DatosVineta;
 
   planesNormalizacion?: PlanNormalizacion[];
+  auditoriaNormativa?: import('./ric/auditoria.js').ResultadoAuditoria;
 }
 
 export interface DatosGeneralesObservadosIA {

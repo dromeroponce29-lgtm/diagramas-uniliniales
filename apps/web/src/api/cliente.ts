@@ -131,6 +131,13 @@ export const apiCatalogo = {
     pedir<ItemCatalogo[]>('POST', `/api/clientes/${clienteSlug}/catalogo/semilla`)
 };
 
+export const apiAuditoria = {
+  ejecutar: (clienteSlug: string, tableroSlug: string) =>
+    pedir<import('@tipos/ric/auditoria').ResultadoAuditoria>('POST', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/auditoria`, {}),
+  leer: (clienteSlug: string, tableroSlug: string) =>
+    pedir<import('@tipos/ric/auditoria').ResultadoAuditoria>('GET', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/auditoria`)
+};
+
 export const apiPlanes = {
   listar: (clienteSlug: string, tableroSlug: string) =>
     pedir<PlanNormalizacion[]>('GET', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/planes`),
