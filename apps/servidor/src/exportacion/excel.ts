@@ -1,34 +1,12 @@
-// Exportación del tablero a Excel: 4 hojas con cuadro de cargas, hallazgos
-// RIC, datos faltantes y levantamientos de terreno.
+// Exportación del tablero a Excel: 3 hojas — cuadro de cargas, hallazgos
+// RIC (cumplimiento normativo) y levantamientos en terreno (datos faltantes
+// para el diagrama unilineal). Estos dos últimos son conceptualmente
+// disjuntos: hallazgos = desviaciones técnicas vs. normas; levantamientos =
+// info que falta para armar el diagrama.
 import ExcelJS from 'exceljs';
-import type { Tablero, ComponenteReconciliado, Circuito } from '../../../../tipos/modelo.js';
+import type { Tablero, ComponenteReconciliado } from '../../../../tipos/modelo.js';
 import { evaluarRIC } from '../../../../tipos/ric/motor.js';
 import { derivarLevantamientosTerreno } from '../../../../tipos/ric/derivar-levantamientos.js';
-
-// Lo que cuenta como "dato faltante" en cada nivel.
-function componenteTieneFaltantes(c: ComponenteReconciliado): string[] {
-  const out: string[] = [];
-  if (!c.calibreA && c.tipo === 'interruptor-automatico') out.push('calibre A');
-  if (!c.polos && (c.tipo === 'interruptor-automatico' || c.tipo === 'diferencial' || c.tipo === 'interruptor-general')) out.push('polos');
-  if (!c.curva && c.tipo === 'interruptor-automatico') out.push('curva');
-  if (!c.sensibilidadMA && c.tipo === 'diferencial') out.push('sensibilidad mA');
-  if (!c.marca) out.push('marca');
-  if (!c.modelo) out.push('modelo');
-  if (!c.capacidadCortocircuitoKA && (c.tipo === 'interruptor-general' || c.tipo === 'interruptor-automatico')) out.push('Icu (kA)');
-  return out;
-}
-
-function circuitoTieneFaltantes(c: Circuito): string[] {
-  const out: string[] = [];
-  if (!c.destino || c.destino === 'pendiente') out.push('destino');
-  if (!c.uso || c.uso === 'pendiente') out.push('uso');
-  if (!c.cargaW) out.push('potencia W');
-  if (!c.corrienteA) out.push('corriente A');
-  if (!c.seccionConductorMM2) out.push('sección mm²');
-  if (!c.longitudM) out.push('longitud m');
-  if (!c.canalizacionTipo) out.push('canalización');
-  return out;
-}
 
 function nombreCorto(c: ComponenteReconciliado): string {
   const partes: string[] = [c.tipo];
@@ -114,99 +92,39 @@ export async function construirExportXLSX(tablero: Tablero): Promise<Buffer> {
   }
 
   // =========================================================================
-  // Hoja 3: Datos faltantes (qué información no se pudo extraer)
-  // =========================================================================
-  const hojaFaltantes = wb.addWorksheet('Datos faltantes');
-  hojaFaltantes.columns = [
-    { header: 'Nivel', key: 'nivel', width: 16 },
-    { header: 'Identificación', key: 'id', width: 28 },
-    { header: 'Confianza', key: 'confianza', width: 14 },
-    { header: 'Campos faltantes', key: 'faltantes', width: 60 },
-    { header: 'Origen', key: 'origen', width: 16 }
-  ];
-  hojaFaltantes.getRow(1).font = { bold: true };
-
-  // 3.1: Datos generales del tablero
-  const faltanGenerales: string[] = [];
-  if (tablero.tensionSistema === 'pendiente') faltanGenerales.push('tensión sistema');
-  if (tablero.esquemaTierra === 'pendiente') faltanGenerales.push('esquema tierra');
-  if (!tablero.frecuenciaHz) faltanGenerales.push('frecuencia Hz');
-  if (!tablero.capacidadNominalA) faltanGenerales.push('capacidad nominal A');
-  if (!tablero.potenciaContratadaKW) faltanGenerales.push('potencia contratada kW');
-  if (!tablero.acometida || tablero.acometida.tipo === 'pendiente') faltanGenerales.push('acometida');
-  if (!tablero.alimentadorEntrada || !tablero.alimentadorEntrada.seccionConductorMM2) faltanGenerales.push('alimentador (sección)');
-  if (!tablero.puestaATierra || tablero.puestaATierra.resistenciaOhmMedida === undefined) faltanGenerales.push('puesta a tierra (R medida)');
-  if (faltanGenerales.length > 0) {
-    hojaFaltantes.addRow({
-      nivel: 'Datos generales',
-      id: tablero.codigo,
-      confianza: '—',
-      faltantes: faltanGenerales.join(', '),
-      origen: 'tablero'
-    });
-  }
-
-  // 3.2: Componentes con confianza baja o datos faltantes
-  for (const c of tablero.componentes) {
-    const fc = componenteTieneFaltantes(c);
-    if (fc.length === 0 && c.procedencia.confianza !== 'baja' && c.procedencia.confianza !== 'discrepancia') continue;
-    hojaFaltantes.addRow({
-      nivel: 'Componente',
-      id: nombreCorto(c),
-      confianza: c.procedencia.confianza,
-      faltantes: fc.join(', ') || '(confianza baja)',
-      origen: c.procedencia.fuente
-    });
-  }
-
-  // 3.3: Circuitos incompletos
-  for (const c of tablero.circuitos) {
-    const fc = circuitoTieneFaltantes(c);
-    if (fc.length === 0) continue;
-    hojaFaltantes.addRow({
-      nivel: 'Circuito',
-      id: `C${c.numero}`,
-      confianza: c.procedencia.confianza,
-      faltantes: fc.join(', '),
-      origen: c.procedencia.fuente
-    });
-  }
-
-  // 3.4: Pendientes explícitos
-  for (const p of tablero.pendientes) {
-    if (p.resueltoEn) continue;
-    hojaFaltantes.addRow({
-      nivel: 'Pendiente',
-      id: p.componenteId ?? p.id.slice(0, 12),
-      confianza: '—',
-      faltantes: p.descripcion,
-      origen: p.categoria
-    });
-  }
-
-  // =========================================================================
-  // Hoja 4: Levantamientos en terreno
+  // Hoja 3: Levantamientos en terreno
+  // Datos faltantes necesarios para armar el diagrama unilineal:
+  // qué medir/leer/observar de los componentes y conexiones del tablero,
+  // entrada y salida. NO incluye cuestiones de cumplimiento normativo
+  // (esas viven en la hoja "Hallazgos RIC").
   // =========================================================================
   const hojaTerreno = wb.addWorksheet('Levantamientos terreno');
   hojaTerreno.columns = [
-    { header: 'Prioridad', key: 'prioridad', width: 12 },
-    { header: 'Descripción', key: 'descripcion', width: 60 },
-    { header: 'Parte RIC', key: 'parteRIC', width: 14 },
-    { header: 'Origen', key: 'origen', width: 22 },
+    { header: 'Prioridad', key: 'prioridad', width: 10 },
+    { header: 'Categoría', key: 'categoria', width: 16 },
+    { header: 'Descripción del dato faltante', key: 'descripcion', width: 60 },
+    { header: 'Instrumento sugerido', key: 'instrumento', width: 36 },
     { header: 'Componente', key: 'componente', width: 24 },
-    { header: 'Circuito', key: 'circuito', width: 12 }
+    { header: 'Circuito', key: 'circuito', width: 10 },
+    { header: 'Ruta', key: 'ruta', width: 50 }
   ];
   hojaTerreno.getRow(1).font = { bold: true };
-  for (const l of derivarLevantamientosTerreno(tablero)) {
+  // Orden: alta > media > baja
+  const ordenPrioridad = { alta: 0, media: 1, baja: 2 };
+  const levantamientos = derivarLevantamientosTerreno(tablero)
+    .slice()
+    .sort((a, b) => ordenPrioridad[a.prioridad] - ordenPrioridad[b.prioridad]);
+  for (const l of levantamientos) {
     const comp = l.componenteId ? tablero.componentes.find(c => c.id === l.componenteId) : undefined;
     const circ = l.circuitoId ? tablero.circuitos.find(c => c.id === l.circuitoId) : undefined;
     hojaTerreno.addRow({
       prioridad: l.prioridad,
+      categoria: l.categoria ?? l.origen,
       descripcion: l.descripcion,
-      parteRIC: l.parteRIC ?? '',
-      origen: l.origen,
+      instrumento: l.instrumentoSugerido ?? '',
       componente: comp ? nombreCorto(comp) : '',
-      circuito: circ ? `C${circ.numero}` : ''
+      circuito: circ ? `C${circ.numero}` : '',
+      ruta: l.ruta ?? ''
     });
   }
 

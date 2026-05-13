@@ -23,14 +23,22 @@ export interface ReglaRIC {
   evaluar: (tablero: Tablero) => HallazgoRIC[];
 }
 
-export type OrigenLevantamiento = 'pendiente' | 'regla-ric' | 'anotacion-usuario' | 'campo-diagrama';
+export type OrigenLevantamiento = 'pendiente' | 'anotacion-usuario' | 'campo-diagrama';
+
+export type CategoriaLevantamiento =
+  | 'medicion'           // requiere instrumento
+  | 'lectura-etiqueta'   // basta con leer la placa del equipo
+  | 'inspeccion-visual'  // observación directa
+  | 'consulta-cliente';  // pedir al cliente
 
 export interface LevantamientoTerreno {
   id: string;                          // estable, derivado de la fuente
   origen: OrigenLevantamiento;
   descripcion: string;
+  ruta?: string;                       // ej. "tablero.alimentadorEntrada.longitudM" (solo para campo-diagrama)
+  categoria?: CategoriaLevantamiento;
+  instrumentoSugerido?: string;
   componenteId?: string;
   circuitoId?: string;
-  parteRIC?: string;
   prioridad: 'alta' | 'media' | 'baja';
 }

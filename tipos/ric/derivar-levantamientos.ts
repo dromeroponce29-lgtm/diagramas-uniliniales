@@ -1,13 +1,20 @@
 // tipos/ric/derivar-levantamientos.ts
+//
+// Levantamientos en terreno: estrictamente datos que el técnico debe medir,
+// leer o consultar para poder armar el diagrama unilineal completo.
+//
+// NO se incluyen hallazgos normativos (cumplimiento RIC). Esos viven en
+// `evaluarRIC()` y se muestran en una vista aparte.
 import type { Tablero } from '../modelo.js';
 import type { LevantamientoTerreno } from './tipos.js';
-import { evaluarRIC } from './motor.js';
 import { levantamientosParaDiagrama } from './levantamientos-diagrama.js';
 
 export function derivarLevantamientosTerreno(tablero: Tablero): LevantamientoTerreno[] {
   const items: LevantamientoTerreno[] = [];
 
-  // 1. Pendientes con resoluble = medicion-terreno
+  // 1. Pendientes explícitos del tablero con resoluble = medicion-terreno.
+  //    Son cosas registradas a mano (por el usuario o el reconciliador) que
+  //    deben verificarse en campo.
   for (const p of tablero.pendientes) {
     if (p.resoluble === 'medicion-terreno' && !p.resueltoEn) {
       items.push({
@@ -20,22 +27,9 @@ export function derivarLevantamientosTerreno(tablero: Tablero): LevantamientoTer
     }
   }
 
-  // 2. Hallazgos RIC con resultado = pendiente-verificar
-  for (const h of evaluarRIC(tablero)) {
-    if (h.resultado === 'pendiente-verificar') {
-      items.push({
-        id: `regla:${h.reglaId}:${h.componenteId ?? ''}:${h.circuitoId ?? ''}`,
-        origen: 'regla-ric',
-        descripcion: h.detalle,
-        ...(h.componenteId && { componenteId: h.componenteId }),
-        ...(h.circuitoId && { circuitoId: h.circuitoId }),
-        parteRIC: h.parteRIC,
-        prioridad: 'baja'
-      });
-    }
-  }
-
-  // 3. Anotaciones tipo levantamiento-terreno
+  // 2. Anotaciones del usuario marcadas como "levantamiento-terreno".
+  //    Refieren a una regla RIC pero el usuario las convirtió en una tarea
+  //    concreta para ir a medir/observar in-situ.
   for (const a of tablero.anotacionesHallazgos) {
     if (a.tipo === 'levantamiento-terreno') {
       items.push({
@@ -49,14 +43,17 @@ export function derivarLevantamientosTerreno(tablero: Tablero): LevantamientoTer
     }
   }
 
-  // 4. Campos del diagrama RIC N°18 que faltan completar
+  // 3. Campos del diagrama unilineal que faltan completar — la fuente
+  //    principal. Cubre tablero, componentes, circuitos, acometida,
+  //    alimentador de entrada y puesta a tierra.
   for (const ld of levantamientosParaDiagrama(tablero)) {
     items.push({
       id: `diagrama:${ld.id}`,
       origen: 'campo-diagrama',
-      descripcion: ld.instrumentoSugerido
-        ? `${ld.descripcion} — ${ld.instrumentoSugerido}`
-        : ld.descripcion,
+      descripcion: ld.descripcion,
+      ruta: ld.ruta,
+      categoria: ld.categoria,
+      ...(ld.instrumentoSugerido && { instrumentoSugerido: ld.instrumentoSugerido }),
       ...(ld.componenteId && { componenteId: ld.componenteId }),
       ...(ld.circuitoId && { circuitoId: ld.circuitoId }),
       prioridad: ld.prioridad

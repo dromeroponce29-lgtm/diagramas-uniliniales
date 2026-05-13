@@ -21,12 +21,12 @@ async function abrirWb(buf: Buffer): Promise<ExcelJS.Workbook> {
 }
 
 describe('construirExportXLSX', () => {
-  it('genera 4 hojas con los nombres esperados', async () => {
+  it('genera 3 hojas con los nombres esperados', async () => {
     const buf = await construirExportXLSX(tableroBase());
     const wb = await abrirWb(buf);
     const nombres = wb.worksheets.map(w => w.name).sort();
     expect(nombres).toEqual([
-      'Cuadro de cargas', 'Datos faltantes', 'Hallazgos RIC', 'Levantamientos terreno'
+      'Cuadro de cargas', 'Hallazgos RIC', 'Levantamientos terreno'
     ]);
   });
 
@@ -73,15 +73,17 @@ describe('construirExportXLSX', () => {
     }
   });
 
-  it('hoja de datos faltantes reporta tablero con datos generales incompletos', async () => {
-    const t = tableroBase();   // tensión y tierra son 'pendiente'
+  it('hoja de levantamientos lista los datos faltantes del diagrama (tensión, esquema tierra, etc.)', async () => {
+    const t = tableroBase();   // tensión y esquema tierra son 'pendiente'
     const wb = await abrirWb(await construirExportXLSX(t));
-    const hoja = wb.getWorksheet('Datos faltantes')!;
-    // Columna 1 = nivel. Debe contener "Datos generales".
-    expect(valoresDeColumna(hoja, 1)).toContain('Datos generales');
+    const hoja = wb.getWorksheet('Levantamientos terreno')!;
+    // Columna 3 = descripción. Debe haber al menos una descripción que mencione "Tensión".
+    const descripciones = valoresDeColumna(hoja, 3);
+    expect(descripciones.some(d => d.toLowerCase().includes('tensión'))).toBe(true);
+    expect(descripciones.some(d => d.toLowerCase().includes('tierra'))).toBe(true);
   });
 
-  it('hoja de levantamientos incluye los pendientes de medición en terreno', async () => {
+  it('hoja de levantamientos incluye los pendientes de medición en terreno (anotaciones manuales)', async () => {
     const t = tableroBase();
     t.pendientes = [{
       id: 'p1',
@@ -91,8 +93,8 @@ describe('construirExportXLSX', () => {
     }];
     const wb = await abrirWb(await construirExportXLSX(t));
     const hoja = wb.getWorksheet('Levantamientos terreno')!;
-    // Columna 2 = descripción.
-    const descripciones = valoresDeColumna(hoja, 2);
+    // Columna 3 = descripción.
+    const descripciones = valoresDeColumna(hoja, 3);
     expect(descripciones).toContain('Medir resistencia de puesta a tierra');
   });
 });
