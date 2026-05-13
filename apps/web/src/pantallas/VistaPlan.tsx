@@ -5,6 +5,38 @@ import { apiPlanes, apiCatalogo } from '../api/cliente.js';
 
 function clp(n: number): string { return n.toLocaleString('es-CL'); }
 
+function FilaPartida({
+  partida, onCambiarCantidad
+}: {
+  partida: PlanNormalizacion['partidas'][number];
+  onCambiarCantidad: (id: string, cantidad: number) => void;
+}) {
+  const [cantLocal, setCantLocal] = useState<number>(partida.cantidad);
+  useEffect(() => setCantLocal(partida.cantidad), [partida.cantidad]);
+
+  return (
+    <tr className="border-b">
+      <td className="py-1 pr-3 font-mono text-xs">{partida.itemCodigo}</td>
+      <td className="py-1 pr-3">{partida.itemDescripcion}</td>
+      <td className="py-1 pr-3 text-right">
+        <input
+          type="number" min={0} step="0.25"
+          value={cantLocal}
+          onChange={e => {
+            const v = Number(e.target.value);
+            setCantLocal(v);
+            onCambiarCantidad(partida.id, v);
+          }}
+          className="border rounded px-1 py-0.5 w-16 text-right"
+        />
+      </td>
+      <td className="py-1 pr-3">{partida.unidad}</td>
+      <td className="py-1 pr-3 text-right">{clp(partida.precioUnitarioCLP)}</td>
+      <td className="py-1 pr-3 text-right">{clp(Math.round(cantLocal * partida.precioUnitarioCLP))}</td>
+    </tr>
+  );
+}
+
 export function VistaPlan() {
   const { clienteSlug, tableroSlug, planId } = useParams<{
     clienteSlug: string; tableroSlug: string; planId: string;
@@ -12,6 +44,11 @@ export function VistaPlan() {
   const [plan, setPlan] = useState<PlanNormalizacion | null>(null);
   const [catalogo, setCatalogo] = useState<ItemCatalogo[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const planLocalRef = useRef<PlanNormalizacion | null>(null);
+
+  useEffect(() => { planLocalRef.current = plan; }, [plan]);
 
   useEffect(() => {
     if (!clienteSlug || !tableroSlug || !planId) return;
@@ -27,6 +64,43 @@ export function VistaPlan() {
       })
       .catch(e => setError(String(e)));
   }, [clienteSlug, tableroSlug, planId]);
+
+  function programarGuardado() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      const p = planLocalRef.current;
+      if (!p || !clienteSlug || !tableroSlug) return;
+      apiPlanes.actualizar(clienteSlug, tableroSlug, p.id, {
+        partidas: p.partidas.map(par => ({
+          id: par.id,
+          itemCodigo: par.itemCodigo,
+          itemDescripcion: par.itemDescripcion,
+          unidad: par.unidad,
+          precioUnitarioCLP: par.precioUnitarioCLP,
+          cantidad: par.cantidad,
+          ...(par.hallazgoReglaId && { hallazgoReglaId: par.hallazgoReglaId }),
+          ...(par.hallazgoComponenteId && { hallazgoComponenteId: par.hallazgoComponenteId }),
+          ...(par.hallazgoCircuitoId && { hallazgoCircuitoId: par.hallazgoCircuitoId }),
+          ...(par.notas && { notas: par.notas })
+        })),
+        ...(p.notas !== undefined && { notas: p.notas })
+      })
+        .then(setPlan)
+        .catch(e => setError(String(e)));
+    }, 1000);
+  }
+
+  function cambiarCantidad(id: string, cantidad: number) {
+    if (!plan) return;
+    const partidas = plan.partidas.map(p => p.id === id
+      ? { ...p, cantidad, totalCLP: Math.round(p.precioUnitarioCLP * cantidad) }
+      : p
+    );
+    const subtotal = partidas.reduce((a, x) => a + x.totalCLP, 0);
+    const iva = plan.incluyeIVA ? Math.round(subtotal * plan.ivaPct / 100) : 0;
+    setPlan({ ...plan, partidas, subtotalCLP: subtotal, ivaCLP: iva, totalCLP: subtotal + iva });
+    programarGuardado();
+  }
 
   if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
   if (!plan) return <div className="p-4">Cargando plan…</div>;
@@ -63,14 +137,7 @@ export function VistaPlan() {
             </thead>
             <tbody>
               {plan.partidas.map(p => (
-                <tr key={p.id} className="border-b">
-                  <td className="py-1 pr-3 font-mono text-xs">{p.itemCodigo}</td>
-                  <td className="py-1 pr-3">{p.itemDescripcion}</td>
-                  <td className="py-1 pr-3 text-right">{p.cantidad}</td>
-                  <td className="py-1 pr-3">{p.unidad}</td>
-                  <td className="py-1 pr-3 text-right">{clp(p.precioUnitarioCLP)}</td>
-                  <td className="py-1 pr-3 text-right">{clp(p.totalCLP)}</td>
-                </tr>
+                <FilaPartida key={p.id} partida={p} onCambiarCantidad={cambiarCantidad} />
               ))}
             </tbody>
           </table>

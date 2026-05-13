@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { VistaPlan } from '../src/pantallas/VistaPlan.js';
 import type { PlanNormalizacion, ItemCatalogo } from '@tipos/modelo';
@@ -26,10 +26,13 @@ function planConPartida(): PlanNormalizacion {
 }
 
 function mountWith(plan: PlanNormalizacion, catalogo: ItemCatalogo[] = []) {
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
     const u = String(url);
     if (u.includes('/catalogo')) return { ok: true, status: 200, json: async () => catalogo, text: async () => '' } as Response;
-    if (u.includes('/planes')) return { ok: true, status: 200, json: async () => [plan], text: async () => '' } as Response;
+    if (u.includes('/planes')) {
+      if (init?.method === 'PUT') return { ok: true, status: 200, json: async () => plan, text: async () => '' } as Response;
+      return { ok: true, status: 200, json: async () => [plan], text: async () => '' } as Response;
+    }
     return { ok: true, status: 200, json: async () => null, text: async () => '' } as Response;
   });
   render(
@@ -58,5 +61,34 @@ describe('VistaPlan', () => {
   it('plan vacío muestra mensaje "sin partidas"', async () => {
     mountWith(planVacio());
     await waitFor(() => expect(screen.getByText(/sin partidas/i)).toBeDefined());
+  });
+
+  it('cambiar cantidad dispara PUT al backend tras debounce', async () => {
+    const plan = planConPartida();
+    let putCalled = false;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+      const u = String(url);
+      if (u.includes('/catalogo')) return { ok: true, status: 200, json: async () => [], text: async () => '' } as Response;
+      if (init?.method === 'PUT') {
+        putCalled = true;
+        return { ok: true, status: 200, json: async () => plan, text: async () => '' } as Response;
+      }
+      return { ok: true, status: 200, json: async () => [plan], text: async () => '' } as Response;
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/clientes/c/tableros/t/planes/P1']}>
+        <Routes>
+          <Route path="/clientes/:clienteSlug/tableros/:tableroSlug/planes/:planId" element={<VistaPlan />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('1')).toBeDefined());
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '3' } });
+    vi.advanceTimersByTime(1100);
+    vi.useRealTimers();
+    await waitFor(() => expect(putCalled).toBe(true));
   });
 });
