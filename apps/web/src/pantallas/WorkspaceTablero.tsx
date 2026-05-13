@@ -51,8 +51,14 @@ export function WorkspaceTablero() {
   return (
     <div className="min-h-full flex flex-col">
       <BarraCompletitud tablero={tablero} />
-      <div className="px-6 py-2">
+      <div className="px-6 py-2 flex items-center justify-between">
         <Link to="/clientes" className="text-sm text-blue-600 hover:underline">← Lista de clientes</Link>
+        <a
+          href={`/api/clientes/${clienteSlug}/tableros/${tableroSlug}/exportar.xlsx`}
+          className="text-sm px-3 py-1 border rounded text-blue-700 hover:bg-blue-50"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Exportar a Excel ↓</a>
       </div>
       <div className="px-6 border-b">
         <nav className="flex gap-1">
