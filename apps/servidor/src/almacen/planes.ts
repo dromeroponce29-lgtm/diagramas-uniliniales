@@ -1,7 +1,7 @@
 import type { PlanNormalizacion, PartidaPlan } from '../../../../tipos/modelo.js';
 import type { PlanActualizacion, PlanCreacion } from '../esquemas/cotizacion.js';
 import { evaluarRIC } from '../../../../tipos/ric/motor.js';
-import { sugerirPartidasDesdeHallazgos } from '../../../../tipos/ric/recetas.js';
+import { sugerirPartidasDesdeHallazgos, filtrarHallazgosNoAplicaSilenciados } from '../../../../tipos/ric/recetas.js';
 import { calcularTotalesPlan, totalDePartida } from '../../../../tipos/cotizacion/calcular.js';
 import { leerTablero } from './tablero.js';
 import { leerCatalogo } from './catalogo.js';
@@ -43,7 +43,8 @@ export async function crearPlan(
 
   if (entrada.autoSugerir) {
     const catalogo = await leerCatalogo(slugCliente);
-    const hallazgos = evaluarRIC(tablero).filter(h => h.resultado === 'no-cumple');
+    const hallazgosNoCumple = evaluarRIC(tablero).filter(h => h.resultado === 'no-cumple');
+    const hallazgos = filtrarHallazgosNoAplicaSilenciados(hallazgosNoCumple, tablero.anotacionesHallazgos);
     const sugeridas = sugerirPartidasDesdeHallazgos(hallazgos, catalogo);
     plan.partidas = sugeridas.map(s => {
       const part: PartidaPlan = {

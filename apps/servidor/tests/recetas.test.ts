@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { RECETAS, sugerirPartidasDesdeHallazgos } from '../../../tipos/ric/recetas.js';
+import { RECETAS, sugerirPartidasDesdeHallazgos, filtrarHallazgosNoAplicaSilenciados } from '../../../tipos/ric/recetas.js';
 import { TODAS_LAS_REGLAS } from '../../../tipos/ric/reglas/index.js';
 import { CATALOGO_SEMILLA } from '../../../tipos/catalogo/semilla.js';
 import type { HallazgoRIC } from '../../../tipos/ric/tipos.js';
-import type { ItemCatalogo } from '../../../tipos/modelo.js';
+import type { ItemCatalogo, AnotacionHallazgo } from '../../../tipos/modelo.js';
 
 function catalogo(): ItemCatalogo[] {
   return CATALOGO_SEMILLA.map((it, i) => ({ ...it, id: `01J${i}` }));
@@ -59,5 +59,34 @@ describe('sugerirPartidasDesdeHallazgos', () => {
   it('hallazgo sin receta registrada no produce partidas', () => {
     const r = sugerirPartidasDesdeHallazgos([hallazgo('regla.que.no.existe')], catalogo());
     expect(r).toHaveLength(0);
+  });
+});
+
+describe('filtrarHallazgosNoAplicaSilenciados', () => {
+  it('quita un hallazgo silenciado con anotación no-aplica del mismo reglaId', () => {
+    const hallazgos: HallazgoRIC[] = [
+      { reglaId: 'ric.tablero.dps-presente', parteRIC: 'X', descripcionRegla: 'X', resultado: 'no-cumple', detalle: 'X' }
+    ];
+    const anotaciones: AnotacionHallazgo[] = [
+      { id: 'a1', tipo: 'no-aplica', reglaId: 'ric.tablero.dps-presente', justificacion: 'TT residencial', creadoEn: '2026-05-13T00:00:00Z' }
+    ];
+    expect(filtrarHallazgosNoAplicaSilenciados(hallazgos, anotaciones)).toHaveLength(0);
+  });
+
+  it('respeta hallazgos cuya anotación es de otro tipo (nota-libre, levantamiento-terreno)', () => {
+    const hallazgos: HallazgoRIC[] = [
+      { reglaId: 'ric.tablero.dps-presente', parteRIC: 'X', descripcionRegla: 'X', resultado: 'no-cumple', detalle: 'X' }
+    ];
+    const anotaciones: AnotacionHallazgo[] = [
+      { id: 'a1', tipo: 'nota-libre', reglaId: 'ric.tablero.dps-presente', justificacion: 'comentario', creadoEn: '2026-05-13T00:00:00Z' }
+    ];
+    expect(filtrarHallazgosNoAplicaSilenciados(hallazgos, anotaciones)).toHaveLength(1);
+  });
+
+  it('respeta hallazgos sin anotaciones', () => {
+    const hallazgos: HallazgoRIC[] = [
+      { reglaId: 'ric.tablero.dps-presente', parteRIC: 'X', descripcionRegla: 'X', resultado: 'no-cumple', detalle: 'X' }
+    ];
+    expect(filtrarHallazgosNoAplicaSilenciados(hallazgos, [])).toHaveLength(1);
   });
 });

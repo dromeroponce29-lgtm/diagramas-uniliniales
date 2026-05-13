@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import type { PlanNormalizacion, ItemCatalogo } from '@tipos/modelo';
 import { apiPlanes, apiCatalogo, apiTableros } from '../api/cliente.js';
 import { evaluarRIC } from '../../../../tipos/ric/motor.js';
-import { sugerirPartidasDesdeHallazgos } from '../../../../tipos/ric/recetas.js';
+import { sugerirPartidasDesdeHallazgos, filtrarHallazgosNoAplicaSilenciados } from '../../../../tipos/ric/recetas.js';
 
 function clp(n: number): string { return n.toLocaleString('es-CL'); }
 
@@ -183,7 +183,8 @@ export function VistaPlan() {
               if (!plan || !clienteSlug || !tableroSlug) return;
               try {
                 const tablero = await apiTableros.leer(clienteSlug, tableroSlug);
-                const hallazgos = evaluarRIC(tablero).filter(h => h.resultado === 'no-cumple');
+                const hallazgosNoCumple = evaluarRIC(tablero).filter(h => h.resultado === 'no-cumple');
+                const hallazgos = filtrarHallazgosNoAplicaSilenciados(hallazgosNoCumple, tablero.anotacionesHallazgos);
                 const sugeridas = sugerirPartidasDesdeHallazgos(hallazgos, catalogo);
                 const partidas = sugeridas.map(s => ({
                   itemCodigo: s.itemCatalogo.codigo,

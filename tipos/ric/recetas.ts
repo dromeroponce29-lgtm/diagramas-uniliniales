@@ -2,7 +2,7 @@
 // (referencias a items del catálogo + cantidad). La sugerencia es solo una
 // propuesta — el usuario puede aceptarla, modificarla o descartarla.
 import type { HallazgoRIC, ResultadoRegla } from './tipos.js';
-import type { ItemCatalogo } from '../modelo.js';
+import type { ItemCatalogo, AnotacionHallazgo } from '../modelo.js';
 
 export interface PartidaSugerida {
   itemCodigo: string;
@@ -95,6 +95,22 @@ export interface PartidaSugeridaResuelta {
   cantidad: number;
   hallazgo: HallazgoRIC;
   notasReceta?: string;
+}
+
+// Pura: filtra hallazgos que tienen una anotación tipo 'no-aplica' con el mismo
+// reglaId / componenteId / circuitoId. Esos hallazgos no deben generar partidas.
+export function filtrarHallazgosNoAplicaSilenciados(
+  hallazgos: HallazgoRIC[],
+  anotaciones: AnotacionHallazgo[]
+): HallazgoRIC[] {
+  return hallazgos.filter(h =>
+    !anotaciones.some(a =>
+      a.tipo === 'no-aplica' &&
+      a.reglaId === h.reglaId &&
+      a.componenteId === h.componenteId &&
+      a.circuitoId === h.circuitoId
+    )
+  );
 }
 
 // Pura: recorre hallazgos, aplica receta, resuelve items contra el catálogo.
