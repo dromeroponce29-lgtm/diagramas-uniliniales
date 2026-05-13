@@ -55,8 +55,9 @@ describe('derivarLevantamientosTerreno', () => {
       { id: 'p2', categoria: 'dato-no-observable', descripcion: 'otro', resoluble: 'entrada-manual' }
     ];
     const ls = derivarLevantamientosTerreno(t);
-    expect(ls).toHaveLength(1);
-    expect(ls[0]!.origen).toBe('pendiente');
+    const pendienteItems = ls.filter(l => l.origen === 'pendiente');
+    expect(pendienteItems).toHaveLength(1);
+    expect(pendienteItems[0]!.origen).toBe('pendiente');
   });
 
   it('incluye anotaciones tipo levantamiento-terreno', () => {
@@ -76,5 +77,14 @@ describe('derivarLevantamientosTerreno', () => {
     const ls = derivarLevantamientosTerreno(t);
     const algunoDeRegla = ls.some(l => l.origen === 'regla-ric');
     expect(algunoDeRegla).toBe(true);
+  });
+
+  it('incluye campos del diagrama RIC N°18 que faltan completar', () => {
+    const t = tableroVacio();   // del helper existente en el archivo
+    const ls = derivarLevantamientosTerreno(t);
+    const conOrigenDiagrama = ls.filter(l => l.origen === 'campo-diagrama');
+    expect(conOrigenDiagrama.length).toBeGreaterThan(0);
+    // Por ejemplo, la tensión debe aparecer
+    expect(conOrigenDiagrama.some(l => l.descripcion.toLowerCase().includes('tensión'))).toBe(true);
   });
 });

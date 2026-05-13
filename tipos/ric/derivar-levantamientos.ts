@@ -2,6 +2,7 @@
 import type { Tablero } from '../modelo.js';
 import type { LevantamientoTerreno } from './tipos.js';
 import { evaluarRIC } from './motor.js';
+import { levantamientosParaDiagrama } from './levantamientos-diagrama.js';
 
 export function derivarLevantamientosTerreno(tablero: Tablero): LevantamientoTerreno[] {
   const items: LevantamientoTerreno[] = [];
@@ -46,6 +47,20 @@ export function derivarLevantamientosTerreno(tablero: Tablero): LevantamientoTer
         prioridad: 'alta'
       });
     }
+  }
+
+  // 4. Campos del diagrama RIC N°18 que faltan completar
+  for (const ld of levantamientosParaDiagrama(tablero)) {
+    items.push({
+      id: `diagrama:${ld.id}`,
+      origen: 'campo-diagrama',
+      descripcion: ld.instrumentoSugerido
+        ? `${ld.descripcion} — ${ld.instrumentoSugerido}`
+        : ld.descripcion,
+      ...(ld.componenteId && { componenteId: ld.componenteId }),
+      ...(ld.circuitoId && { circuitoId: ld.circuitoId }),
+      prioridad: ld.prioridad
+    });
   }
 
   return items;

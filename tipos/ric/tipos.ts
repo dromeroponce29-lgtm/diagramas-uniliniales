@@ -23,7 +23,7 @@ export interface ReglaRIC {
   evaluar: (tablero: Tablero) => HallazgoRIC[];
 }
 
-export type OrigenLevantamiento = 'pendiente' | 'regla-ric' | 'anotacion-usuario';
+export type OrigenLevantamiento = 'pendiente' | 'regla-ric' | 'anotacion-usuario' | 'campo-diagrama';
 
 export interface LevantamientoTerreno {
   id: string;                          // estable, derivado de la fuente
