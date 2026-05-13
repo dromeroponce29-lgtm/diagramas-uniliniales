@@ -132,7 +132,7 @@ describe('levantamientosParaDiagrama', () => {
     const t = tableroVacio();
     t.circuitos = [{
       id: 'c1', numero: 1, proteccionComponenteId: 'a1',
-      uso: 'iluminacion',
+      uso: 'iluminacion', destino: 'test',
       procedencia: { fuente: 'manual', confianza: 'alta' }
     }];
     const items = levantamientosParaDiagrama(t);
@@ -145,7 +145,7 @@ describe('levantamientosParaDiagrama', () => {
     const t = tableroVacio();
     t.circuitos = [{
       id: 'cF', numero: 5, proteccionComponenteId: 'a5',
-      uso: 'fuerza',
+      uso: 'fuerza', destino: 'test',
       procedencia: { fuente: 'manual', confianza: 'alta' }
     }];
     const items = levantamientosParaDiagrama(t);

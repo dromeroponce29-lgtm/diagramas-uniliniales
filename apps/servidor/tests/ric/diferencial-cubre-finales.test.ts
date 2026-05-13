@@ -23,7 +23,7 @@ describe('reglaDiferencialCubreFinales', () => {
     const t = tableroBase();
     t.circuitos = [{
       id: 'c1', numero: 1, proteccionComponenteId: 'a1',
-      uso: 'enchufes',
+      uso: 'enchufes', destino: 'test',
       procedencia: { fuente: 'manual', confianza: 'alta' }
     }];
     const hs = reglaDiferencialCubreFinales.evaluar(t);
@@ -36,7 +36,7 @@ describe('reglaDiferencialCubreFinales', () => {
     const t = tableroBase();
     t.circuitos = [{
       id: 'c1', numero: 1, proteccionComponenteId: 'a1', diferencialComponenteId: 'd1',
-      uso: 'cocina',
+      uso: 'cocina', destino: 'test',
       procedencia: { fuente: 'manual', confianza: 'alta' }
     }];
     const hs = reglaDiferencialCubreFinales.evaluar(t);
@@ -47,7 +47,7 @@ describe('reglaDiferencialCubreFinales', () => {
     const t = tableroBase();
     t.circuitos = [{
       id: 'c1', numero: 1, proteccionComponenteId: 'a1',
-      uso: 'iluminacion',
+      uso: 'iluminacion', destino: 'test',
       procedencia: { fuente: 'manual', confianza: 'alta' }
     }];
     const hs = reglaDiferencialCubreFinales.evaluar(t);
@@ -58,7 +58,7 @@ describe('reglaDiferencialCubreFinales', () => {
     const t = tableroBase();
     t.circuitos = [{
       id: 'c1', numero: 1, proteccionComponenteId: 'a1',
-      uso: 'pendiente',
+      uso: 'pendiente', destino: 'test',
       procedencia: { fuente: 'manual', confianza: 'alta' }
     }];
     const hs = reglaDiferencialCubreFinales.evaluar(t);

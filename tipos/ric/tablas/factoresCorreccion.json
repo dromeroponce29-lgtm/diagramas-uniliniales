@@ -1,0 +1,47 @@
+{
+  "_meta": {
+    "fuente": "Valores referenciales RIC/IEC. Verificar contra pliego vigente.",
+    "actualizadoEn": "2026-04-27"
+  },
+  "temperaturaAmbiente": {
+    "_descripcion": "Factor multiplicativo para conductores con aislación 75°C (THHN/TW) y 90°C (EVA/XLPE/NYY) según temperatura ambiente.",
+    "T75C": {
+      "20": 1.05,
+      "25": 1.0,
+      "30": 1.0,
+      "35": 0.94,
+      "40": 0.88,
+      "45": 0.82,
+      "50": 0.75,
+      "55": 0.67,
+      "60": 0.58,
+      "65": 0.47,
+      "70": 0.33
+    },
+    "T90C": {
+      "20": 1.04,
+      "25": 1.02,
+      "30": 1.0,
+      "35": 0.96,
+      "40": 0.91,
+      "45": 0.87,
+      "50": 0.82,
+      "55": 0.76,
+      "60": 0.71,
+      "65": 0.65,
+      "70": 0.58,
+      "75": 0.5,
+      "80": 0.41
+    }
+  },
+  "agrupamiento": {
+    "_descripcion": "Factor por número de conductores activos en una misma canalización o ducto.",
+    "1-3": 1.0,
+    "4-6": 0.8,
+    "7-9": 0.7,
+    "10-20": 0.5,
+    "21-30": 0.45,
+    "31-40": 0.4,
+    "41+": 0.35
+  }
+}

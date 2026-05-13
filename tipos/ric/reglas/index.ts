@@ -11,6 +11,8 @@ import { reglaSelectividad } from './selectividad.js';
 import { reglaCalibreIgVsAlimentador } from './calibre-ig-vs-alimentador.js';
 import { reglaVinetaRotulada } from './vineta-rotulada.js';
 import { reglaDiferencialCubreFinales } from './diferencial-cubre-finales.js';
+import { reglaCalibrePeMinimo } from './calibre-pe-minimo.js';
+import { reglaCaidaTensionCircuito } from './caida-tension-circuito.js';
 import type { ReglaRIC } from '../tipos.js';
 
 export const TODAS_LAS_REGLAS: ReglaRIC[] = [
@@ -25,5 +27,7 @@ export const TODAS_LAS_REGLAS: ReglaRIC[] = [
   reglaSelectividad,
   reglaCalibreIgVsAlimentador,
   reglaVinetaRotulada,
-  reglaDiferencialCubreFinales
+  reglaDiferencialCubreFinales,
+  reglaCalibrePeMinimo,
+  reglaCaidaTensionCircuito
 ];
