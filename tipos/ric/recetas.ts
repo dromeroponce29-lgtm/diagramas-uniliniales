@@ -87,6 +87,29 @@ export const RECETAS: Receta[] = [
       { itemCodigo: 'AUT-3P-63A-C', cantidad: 1, notas: 'Cambiar IG por uno con calibre adecuado a la cascada' },
       { itemCodigo: 'HH-electricista', cantidad: 1.0 }
     ]
+  },
+  {
+    reglaId: 'ric.tablero.calibre-ig-vs-alimentador',
+    aplicaA: ['no-cumple'],
+    partidas: [
+      { itemCodigo: 'AUT-3P-63A-C', cantidad: 1, notas: 'Reducir calibre del IG al máximo soportado por el alimentador, o aumentar la sección del alimentador' },
+      { itemCodigo: 'HH-electricista', cantidad: 1.0 }
+    ]
+  },
+  {
+    reglaId: 'ric.tablero.vineta-rotulada',
+    aplicaA: ['no-cumple'],
+    partidas: [
+      { itemCodigo: 'HH-ayudante', cantidad: 0.5, notas: 'Completar la viñeta de la lámina con proyecto, instalador SEC y número/revisión de lámina' }
+    ]
+  },
+  {
+    reglaId: 'ric.tablero.diferencial-cubre-finales',
+    aplicaA: ['no-cumple'],
+    partidas: [
+      { itemCodigo: 'DIF-2P-25A-30MA', cantidad: 1, notas: 'Agregar diferencial 30 mA aguas arriba del circuito final (ajustar polos/calibre según corriente)' },
+      { itemCodigo: 'HH-electricista', cantidad: 0.5 }
+    ]
   }
 ];
 

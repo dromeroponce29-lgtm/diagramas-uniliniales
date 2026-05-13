@@ -8,6 +8,9 @@ import { reglaCalibreVsSeccion } from './calibre-vs-seccion.js';
 import { reglaIdentificacionCircuitos } from './identificacion-circuitos.js';
 import { reglaReservaMinima } from './reserva-minima.js';
 import { reglaSelectividad } from './selectividad.js';
+import { reglaCalibreIgVsAlimentador } from './calibre-ig-vs-alimentador.js';
+import { reglaVinetaRotulada } from './vineta-rotulada.js';
+import { reglaDiferencialCubreFinales } from './diferencial-cubre-finales.js';
 import type { ReglaRIC } from '../tipos.js';
 
 export const TODAS_LAS_REGLAS: ReglaRIC[] = [
@@ -19,5 +22,8 @@ export const TODAS_LAS_REGLAS: ReglaRIC[] = [
   reglaCalibreVsSeccion,
   reglaIdentificacionCircuitos,
   reglaReservaMinima,
-  reglaSelectividad
+  reglaSelectividad,
+  reglaCalibreIgVsAlimentador,
+  reglaVinetaRotulada,
+  reglaDiferencialCubreFinales
 ];

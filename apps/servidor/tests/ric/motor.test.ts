@@ -16,8 +16,8 @@ function tableroVacio(): Tablero {
 }
 
 describe('motor RIC', () => {
-  it('lista de reglas tiene exactamente 9 elementos', () => {
-    expect(TODAS_LAS_REGLAS).toHaveLength(9);
+  it('lista de reglas tiene al menos 12 elementos (9 base + ampliaciones)', () => {
+    expect(TODAS_LAS_REGLAS.length).toBeGreaterThanOrEqual(12);
   });
 
   it('cada regla tiene id único', () => {
