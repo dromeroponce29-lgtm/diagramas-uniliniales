@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { PlanNormalizacion, ItemCatalogo } from '@tipos/modelo';
 import { apiPlanes, apiCatalogo, apiTableros } from '../api/cliente.js';
 import { evaluarRIC } from '../../../../tipos/ric/motor.js';
@@ -47,6 +47,7 @@ export function VistaPlan() {
   const { clienteSlug, tableroSlug, planId } = useParams<{
     clienteSlug: string; tableroSlug: string; planId: string;
   }>();
+  const navigate = useNavigate();
   const [plan, setPlan] = useState<PlanNormalizacion | null>(null);
   const [catalogo, setCatalogo] = useState<ItemCatalogo[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +133,7 @@ export function VistaPlan() {
               if (!clienteSlug || !tableroSlug) return;
               try {
                 await apiPlanes.eliminar(clienteSlug, tableroSlug, plan.id);
-                window.location.href = `/clientes/${clienteSlug}/tableros/${tableroSlug}?tab=ric`;
+                navigate(`/clientes/${clienteSlug}/tableros/${tableroSlug}?tab=ric`);
               } catch (e) { setError(String(e)); }
             }}
             className="text-sm text-red-600 hover:underline ml-2"

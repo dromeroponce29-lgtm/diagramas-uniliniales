@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { ZodError } from 'zod';
-import { EsquemaCatalogo } from '../esquemas/catalogo.js';
 import {
   leerCatalogo,
   reemplazarCatalogo,
@@ -26,7 +25,6 @@ export function crearRutasCatalogo(): Router {
         return;
       }
       const reemplazado = await reemplazarCatalogo(req.params.slug!, req.body);
-      EsquemaCatalogo.parse(reemplazado);
       res.json(reemplazado);
     } catch (e) {
       if (e instanceof ZodError) {

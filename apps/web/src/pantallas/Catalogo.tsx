@@ -162,6 +162,10 @@ function FilaCatalogo({ item, onGuardar, onEliminar }: FilaProps) {
         <select value={borrador.categoria} onChange={e => setBorrador({ ...borrador, categoria: e.target.value as CategoriaCatalogo })} className="border rounded px-1 py-0.5">
           {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        <select value={borrador.tipo} onChange={e => setBorrador({ ...borrador, tipo: e.target.value as 'material' | 'labor' })} className="border rounded px-1 py-0.5 ml-1 text-xs">
+          <option value="material">material</option>
+          <option value="labor">labor</option>
+        </select>
       </td>
       <td>
         <select value={borrador.unidad} onChange={e => setBorrador({ ...borrador, unidad: e.target.value as UnidadCatalogo })} className="border rounded px-1 py-0.5">
@@ -199,6 +203,10 @@ function FormularioNuevoItem({ onCrear }: NuevoProps) {
         <input placeholder="descripción" value={borrador.descripcion} onChange={e => setBorrador({ ...borrador, descripcion: e.target.value })} className="border rounded px-1 py-0.5 flex-1" />
         <select value={borrador.categoria} onChange={e => setBorrador({ ...borrador, categoria: e.target.value as CategoriaCatalogo })} className="border rounded px-1 py-0.5">
           {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={borrador.tipo} onChange={e => setBorrador({ ...borrador, tipo: e.target.value as 'material' | 'labor' })} className="border rounded px-1 py-0.5">
+          <option value="material">material</option>
+          <option value="labor">labor</option>
         </select>
         <select value={borrador.unidad} onChange={e => setBorrador({ ...borrador, unidad: e.target.value as UnidadCatalogo })} className="border rounded px-1 py-0.5">
           {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
