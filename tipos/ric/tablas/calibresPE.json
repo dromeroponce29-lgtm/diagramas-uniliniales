@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "fuente": "RIC Pliego Técnico N°6 (Sistemas de puesta a tierra). Tabla de selección de conductor de protección (PE).",
+    "regla": "Para fase ≤ 16 mm² → PE = fase. Para fase > 16 mm² → PE ≈ fase / 2 con mínimo 16 mm² (valores escalonados a calibres normalizados).",
+    "actualizadoEn": "2026-04-27"
+  },
+  "tabla": {
+    "1.5": 1.5,
+    "2.5": 2.5,
+    "4": 4,
+    "6": 6,
+    "10": 10,
+    "16": 16,
+    "25": 16,
+    "35": 16,
+    "50": 25,
+    "70": 35,
+    "95": 50,
+    "120": 70,
+    "150": 70,
+    "185": 95,
+    "240": 120,
+    "300": 150
+  }
+}

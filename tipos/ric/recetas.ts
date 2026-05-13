@@ -110,6 +110,22 @@ export const RECETAS: Receta[] = [
       { itemCodigo: 'DIF-2P-25A-30MA', cantidad: 1, notas: 'Agregar diferencial 30 mA aguas arriba del circuito final (ajustar polos/calibre según corriente)' },
       { itemCodigo: 'HH-electricista', cantidad: 0.5 }
     ]
+  },
+  {
+    reglaId: 'ric.tablero.calibre-pe-minimo',
+    aplicaA: ['no-cumple'],
+    partidas: [
+      { itemCodigo: 'CABLE-4-THHN', cantidad: 10, notas: 'Aumentar sección del conductor PE al mínimo de tabla. Recotizar la cantidad real según longitud y calibre requerido.' },
+      { itemCodigo: 'HH-electricista', cantidad: 1.0 }
+    ]
+  },
+  {
+    reglaId: 'ric.tablero.caida-tension-circuito',
+    aplicaA: ['no-cumple'],
+    partidas: [
+      { itemCodigo: 'CABLE-6-THHN', cantidad: 10, notas: 'Aumentar sección del conductor para bajar la caída de tensión bajo 3 %. Recotizar cantidad y calibre según longitud del circuito.' },
+      { itemCodigo: 'HH-electricista', cantidad: 1.5 }
+    ]
   }
 ];
 

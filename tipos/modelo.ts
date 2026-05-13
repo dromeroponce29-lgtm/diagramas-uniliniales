@@ -226,6 +226,9 @@ export interface Circuito {
   destino: string;                     // texto libre o "pendiente"
   uso: UsoCircuito;
   seccionConductorMM2?: number;
+  seccionConductorPEMM2?: number;       // sección del conductor de protección (RIC N°06)
+  materialConductor?: 'Cu' | 'Al';      // default Cu
+  aislacionConductor?: 'THHN' | 'EVA' | 'XLPE' | 'NYY' | 'TW';
   longitudM?: number;
   cargaW?: number;
   canalizacionTipo?: TipoCanalizacion;

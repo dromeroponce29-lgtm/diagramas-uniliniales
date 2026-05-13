@@ -1,0 +1,69 @@
+{
+  "_meta": {
+    "fuente": "Áreas internas de tuberías y áreas externas (con aislación) de conductores. Llenado máximo 40% para >2 conductores según RIC/NEC.",
+    "actualizadoEn": "2026-04-27",
+    "llenadoMaximoPct": 40
+  },
+  "areaExternaConductorMm2": {
+    "_descripcion": "Área externa aproximada del conductor incluida la aislación (mm²), THHN/EVA referencial.",
+    "1.5": 8.0,
+    "2.5": 11.0,
+    "4": 16.0,
+    "6": 22.0,
+    "10": 36.0,
+    "16": 52.0,
+    "25": 80.0,
+    "35": 104.0,
+    "50": 141.0,
+    "70": 199.0,
+    "95": 263.0,
+    "120": 330.0,
+    "150": 410.0,
+    "185": 497.0,
+    "240": 641.0,
+    "300": 796.0
+  },
+  "tuberias": {
+    "EMT": [
+      { "nominal": "1/2\"", "diametroExteriorMm": 17.1, "diametroInteriorMm": 15.8, "areaInternaMm2": 196 },
+      { "nominal": "3/4\"", "diametroExteriorMm": 21.3, "diametroInteriorMm": 20.0, "areaInternaMm2": 314 },
+      { "nominal": "1\"", "diametroExteriorMm": 26.7, "diametroInteriorMm": 25.5, "areaInternaMm2": 511 },
+      { "nominal": "1-1/4\"", "diametroExteriorMm": 33.5, "diametroInteriorMm": 32.0, "areaInternaMm2": 804 },
+      { "nominal": "1-1/2\"", "diametroExteriorMm": 38.5, "diametroInteriorMm": 37.1, "areaInternaMm2": 1081 },
+      { "nominal": "2\"", "diametroExteriorMm": 50.5, "diametroInteriorMm": 48.4, "areaInternaMm2": 1840 },
+      { "nominal": "2-1/2\"", "diametroExteriorMm": 63.9, "diametroInteriorMm": 61.0, "areaInternaMm2": 2922 },
+      { "nominal": "3\"", "diametroExteriorMm": 76.2, "diametroInteriorMm": 73.0, "areaInternaMm2": 4185 },
+      { "nominal": "4\"", "diametroExteriorMm": 101.6, "diametroInteriorMm": 97.4, "areaInternaMm2": 7449 }
+    ],
+    "PVC_rigido": [
+      { "nominal": "1/2\"", "diametroExteriorMm": 21.3, "diametroInteriorMm": 17.1, "areaInternaMm2": 230 },
+      { "nominal": "3/4\"", "diametroExteriorMm": 26.7, "diametroInteriorMm": 22.0, "areaInternaMm2": 380 },
+      { "nominal": "1\"", "diametroExteriorMm": 33.4, "diametroInteriorMm": 28.2, "areaInternaMm2": 624 },
+      { "nominal": "1-1/4\"", "diametroExteriorMm": 42.2, "diametroInteriorMm": 36.7, "areaInternaMm2": 1058 },
+      { "nominal": "1-1/2\"", "diametroExteriorMm": 48.3, "diametroInteriorMm": 42.1, "areaInternaMm2": 1392 },
+      { "nominal": "2\"", "diametroExteriorMm": 60.3, "diametroInteriorMm": 53.5, "areaInternaMm2": 2248 },
+      { "nominal": "2-1/2\"", "diametroExteriorMm": 73.0, "diametroInteriorMm": 64.7, "areaInternaMm2": 3287 },
+      { "nominal": "3\"", "diametroExteriorMm": 88.9, "diametroInteriorMm": 79.2, "areaInternaMm2": 4928 },
+      { "nominal": "4\"", "diametroExteriorMm": 114.3, "diametroInteriorMm": 102.3, "areaInternaMm2": 8217 }
+    ],
+    "PVC_corrugado": [
+      { "nominal": "16 mm", "diametroExteriorMm": 16, "diametroInteriorMm": 11.0, "areaInternaMm2": 95 },
+      { "nominal": "20 mm", "diametroExteriorMm": 20, "diametroInteriorMm": 14.0, "areaInternaMm2": 154 },
+      { "nominal": "25 mm", "diametroExteriorMm": 25, "diametroInteriorMm": 18.5, "areaInternaMm2": 269 },
+      { "nominal": "32 mm", "diametroExteriorMm": 32, "diametroInteriorMm": 24.0, "areaInternaMm2": 452 },
+      { "nominal": "40 mm", "diametroExteriorMm": 40, "diametroInteriorMm": 31.0, "areaInternaMm2": 754 },
+      { "nominal": "50 mm", "diametroExteriorMm": 50, "diametroInteriorMm": 39.0, "areaInternaMm2": 1194 }
+    ],
+    "IMC": [
+      { "nominal": "1/2\"", "diametroExteriorMm": 21.0, "diametroInteriorMm": 17.5, "areaInternaMm2": 240 },
+      { "nominal": "3/4\"", "diametroExteriorMm": 26.5, "diametroInteriorMm": 22.7, "areaInternaMm2": 405 },
+      { "nominal": "1\"", "diametroExteriorMm": 33.2, "diametroInteriorMm": 28.7, "areaInternaMm2": 647 },
+      { "nominal": "1-1/4\"", "diametroExteriorMm": 41.8, "diametroInteriorMm": 37.2, "areaInternaMm2": 1086 },
+      { "nominal": "1-1/2\"", "diametroExteriorMm": 47.7, "diametroInteriorMm": 42.7, "areaInternaMm2": 1432 },
+      { "nominal": "2\"", "diametroExteriorMm": 59.7, "diametroInteriorMm": 54.0, "areaInternaMm2": 2290 },
+      { "nominal": "2-1/2\"", "diametroExteriorMm": 72.2, "diametroInteriorMm": 65.0, "areaInternaMm2": 3318 },
+      { "nominal": "3\"", "diametroExteriorMm": 87.9, "diametroInteriorMm": 80.4, "areaInternaMm2": 5077 },
+      { "nominal": "4\"", "diametroExteriorMm": 113.0, "diametroInteriorMm": 103.5, "areaInternaMm2": 8413 }
+    ]
+  }
+}
