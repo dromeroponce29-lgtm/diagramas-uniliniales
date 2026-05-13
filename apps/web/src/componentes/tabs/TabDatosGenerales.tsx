@@ -5,6 +5,7 @@ import { FormularioAlimentadorEntrada } from '../datos-generales/FormularioAlime
 import { FormularioPuestaATierra } from '../datos-generales/FormularioPuestaATierra.js';
 import { FormularioVineta } from '../datos-generales/FormularioVineta.js';
 import { FormularioNotasGenerales } from '../datos-generales/FormularioNotasGenerales.js';
+import { SugerenciasIA } from '../datos-generales/SugerenciasIA.js';
 
 interface Props {
   tablero: Tablero;
@@ -16,6 +17,7 @@ interface Props {
 export function TabDatosGenerales({ tablero, cliente, clienteSlug, tableroSlug }: Props) {
   return (
     <div className="grid grid-cols-2 gap-4">
+      <SugerenciasIA tablero={tablero} clienteSlug={clienteSlug} tableroSlug={tableroSlug} />
       <FormularioDatosElectricos tablero={tablero} clienteSlug={clienteSlug} tableroSlug={tableroSlug} />
       <FormularioAcometida tablero={tablero} clienteSlug={clienteSlug} tableroSlug={tableroSlug} />
       <FormularioAlimentadorEntrada tablero={tablero} clienteSlug={clienteSlug} tableroSlug={tableroSlug} />

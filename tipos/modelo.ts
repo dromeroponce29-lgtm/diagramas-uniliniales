@@ -55,6 +55,7 @@ export interface ComponenteDetectadoAgente {
   polos: 1 | 2 | 3 | 4 | null;
   curva: 'B' | 'C' | 'D' | 'K' | null;
   sensibilidadMA: number | null;
+  capacidadCortocircuitoKA?: number | null;
   posicion: { fila: number; columna: number } | null;
   textoLeido: string | null;
   confianzaAgente: 'alta' | 'media' | 'baja';
@@ -64,6 +65,7 @@ export interface ComponenteDetectadoAgente {
 export interface RotulacionCircuito {
   numero: number | null;
   textoOriginal: string;
+  destinoLeido?: string | null;
 }
 
 // Resultado del reconciliador para una sola foto.
@@ -165,6 +167,17 @@ export interface Tablero {
   planesNormalizacion?: PlanNormalizacion[];
 }
 
+export interface DatosGeneralesObservadosIA {
+  tensionSistema?: '220V-mono' | '380V-trif' | '380V/220V-trif-n';
+  esquemaTierra?: 'TT' | 'TN-S' | 'TN-C-S' | 'IT';
+  frecuenciaHz?: number;
+  capacidadNominalA?: number;
+  marcaGabinete?: string;
+  modeloGabinete?: string;
+  observaciones?: string;
+  fuente: 'foto-claude' | 'foto-openai' | 'foto-ambos';
+}
+
 export interface Foto {
   id: string;                                 // ULID, también es el nombre del archivo
   nombreOriginal: string;                     // como vino del usuario
@@ -172,6 +185,7 @@ export interface Foto {
   calidadFoto: CalidadFoto;
   problemasFoto: string[];
   subidaEn: string;                           // ISO
+  datosGeneralesObservadosIA?: DatosGeneralesObservadosIA;
 }
 
 export type CategoriaPendiente =

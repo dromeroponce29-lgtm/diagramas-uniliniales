@@ -29,13 +29,25 @@ const EsquemaComponenteReconciliado = z.object({
   procedencia: EsquemaProcedencia
 });
 
+const EsquemaDatosGeneralesObservadosIA = z.object({
+  tensionSistema: z.enum(['220V-mono', '380V-trif', '380V/220V-trif-n']).optional(),
+  esquemaTierra: z.enum(['TT', 'TN-S', 'TN-C-S', 'IT']).optional(),
+  frecuenciaHz: z.number().positive().optional(),
+  capacidadNominalA: z.number().positive().optional(),
+  marcaGabinete: z.string().optional(),
+  modeloGabinete: z.string().optional(),
+  observaciones: z.string().optional(),
+  fuente: z.enum(['foto-claude', 'foto-openai', 'foto-ambos'])
+});
+
 const EsquemaFoto = z.object({
   id: z.string().min(1),
   nombreOriginal: z.string(),
   mimeType: z.string(),
   calidadFoto: z.enum(['buena', 'aceptable', 'mala']),
   problemasFoto: z.array(z.string()),
-  subidaEn: z.string()
+  subidaEn: z.string(),
+  datosGeneralesObservadosIA: EsquemaDatosGeneralesObservadosIA.optional()
 });
 
 const EsquemaPendiente = z.object({
