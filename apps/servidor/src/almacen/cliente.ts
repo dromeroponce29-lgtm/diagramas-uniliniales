@@ -87,6 +87,10 @@ export async function actualizarCliente(slug: string, parche: Partial<ClienteEnt
     ...(parche.contactoNombre !== undefined && { contactoNombre: parche.contactoNombre }),
     ...(parche.contactoTelefono !== undefined && { contactoTelefono: parche.contactoTelefono }),
     ...(parche.contactoEmail !== undefined && { contactoEmail: parche.contactoEmail }),
+    ...(parche.instaladorPredeterminadoNombre !== undefined && { instaladorPredeterminadoNombre: parche.instaladorPredeterminadoNombre }),
+    ...(parche.instaladorPredeterminadoRUT !== undefined && { instaladorPredeterminadoRUT: parche.instaladorPredeterminadoRUT }),
+    ...(parche.instaladorPredeterminadoClaseSEC !== undefined && { instaladorPredeterminadoClaseSEC: parche.instaladorPredeterminadoClaseSEC }),
+    ...(parche.proyectoNombrePredeterminado !== undefined && { proyectoNombrePredeterminado: parche.proyectoNombrePredeterminado }),
     actualizadoEn: new Date().toISOString()
   };
   await escribirJsonAtomico(archivoCliente(slug), actualizado);

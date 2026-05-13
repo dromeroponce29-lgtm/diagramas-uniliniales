@@ -21,7 +21,14 @@ export const apiClientes = {
   crear: (datos: { nombre: string; rut?: string; direccion?: string; contactoNombre?: string; contactoTelefono?: string; contactoEmail?: string }) =>
     pedir<Cliente>('POST', '/api/clientes', datos),
   leer: (slug: string) => pedir<Cliente>('GET', `/api/clientes/${slug}`),
-  actualizar: (slug: string, datos: Partial<{ nombre: string; rut: string; direccion: string; contactoNombre: string; contactoTelefono: string; contactoEmail: string }>) =>
+  actualizar: (slug: string, datos: Partial<{
+    nombre: string; rut: string; direccion: string;
+    contactoNombre: string; contactoTelefono: string; contactoEmail: string;
+    instaladorPredeterminadoNombre: string;
+    instaladorPredeterminadoRUT: string;
+    instaladorPredeterminadoClaseSEC: 'A' | 'B' | 'C' | 'D';
+    proyectoNombrePredeterminado: string;
+  }>) =>
     pedir<Cliente>('PUT', `/api/clientes/${slug}`, datos),
   eliminar: (slug: string) => pedir<void>('DELETE', `/api/clientes/${slug}`)
 };
@@ -33,7 +40,24 @@ export const apiTableros = {
     pedir<Tablero>('POST', `/api/clientes/${clienteSlug}/tableros`, datos),
   leer: (clienteSlug: string, tableroSlug: string) =>
     pedir<Tablero>('GET', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}`),
-  actualizar: (clienteSlug: string, tableroSlug: string, datos: Partial<{ tensionSistema: string; esquemaTierra: string; potenciaContratadaKW: number; corrienteNominalA: number; ubicacion: string; nombre: string; codigo: string; tipo: string; espaciosTotales: number }>) =>
+  actualizar: (clienteSlug: string, tableroSlug: string, datos: Partial<{
+    tensionSistema: string;
+    esquemaTierra: string;
+    potenciaContratadaKW: number;
+    corrienteNominalA: number;
+    ubicacion: string;
+    nombre: string;
+    codigo: string;
+    tipo: string;
+    espaciosTotales: number;
+    frecuenciaHz: number;
+    capacidadNominalA: number;
+    notasGenerales: string;
+    acometida: import('@tipos/modelo').DatosAcometida;
+    alimentadorEntrada: import('@tipos/modelo').DatosAlimentadorEntrada;
+    puestaATierra: import('@tipos/modelo').DatosPuestaATierra;
+    vineta: import('@tipos/modelo').DatosVineta;
+  }>) =>
     pedir<Tablero>('PUT', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}`, datos),
   eliminar: (clienteSlug: string, tableroSlug: string) =>
     pedir<void>('DELETE', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}`),

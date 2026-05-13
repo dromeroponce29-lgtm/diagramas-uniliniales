@@ -17,7 +17,11 @@ export const EsquemaCliente = z.object({
   contactoEmail: z.string().email().max(200).optional(),
   creadoEn: z.string(),
   actualizadoEn: z.string(),
-  tableros: z.array(EsquemaResumenTablero)
+  tableros: z.array(EsquemaResumenTablero),
+  instaladorPredeterminadoNombre: z.string().max(200).optional(),
+  instaladorPredeterminadoRUT: z.string().max(30).optional(),
+  instaladorPredeterminadoClaseSEC: z.enum(['A', 'B', 'C', 'D']).optional(),
+  proyectoNombrePredeterminado: z.string().max(200).optional()
 });
 
 // Para inputs al crear (lo que envía el frontend, sin id/slug/timestamps/tableros).

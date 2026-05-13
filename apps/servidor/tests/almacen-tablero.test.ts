@@ -167,6 +167,25 @@ describe('almacén Tablero', () => {
     expect(releido.circuitos).toEqual([nuevoCircuito]);
   });
 
+  it('persiste acometida, alimentadorEntrada y vineta vía actualizarTablero', async () => {
+    const t = await crearTablero(clienteSlug, {
+      codigo: 'TG', nombre: 'X', tipo: 'general',
+      tensionSistema: 'pendiente', esquemaTierra: 'pendiente'
+    });
+    const actualizado = await actualizarTablero(clienteSlug, t.slug, {
+      frecuenciaHz: 50,
+      acometida: { tipo: 'aerea', ubicacion: 'Frontis' },
+      alimentadorEntrada: { seccionConductorMM2: 16, longitudM: 12 },
+      vineta: { numeroLamina: 'E-01', revision: 'Rev 0' }
+    });
+    expect(actualizado.acometida?.tipo).toBe('aerea');
+    expect(actualizado.alimentadorEntrada?.seccionConductorMM2).toBe(16);
+    expect(actualizado.vineta?.numeroLamina).toBe('E-01');
+    expect(actualizado.frecuenciaHz).toBe(50);
+    const releido = await leerTablero(clienteSlug, t.slug);
+    expect(releido.acometida?.tipo).toBe('aerea');
+  });
+
   it('reemplazarAnotacionesHallazgos sustituye el array completo y persiste', async () => {
     const t = await crearTablero(clienteSlug, { codigo: 'TG', nombre: 'TG', tipo: 'general' });
     const anotacion = {

@@ -24,6 +24,7 @@ const EsquemaComponenteReconciliado = z.object({
     fila: z.number().int().nonnegative(),
     columna: z.number().int().nonnegative()
   }).optional(),
+  capacidadCortocircuitoKA: z.number().positive().optional(),
   procedencia: EsquemaProcedencia
 });
 
@@ -55,6 +56,11 @@ const EsquemaCircuito = z.object({
   seccionConductorMM2: z.number().positive().optional(),
   longitudM: z.number().positive().optional(),
   cargaW: z.number().positive().optional(),
+  canalizacionTipo: z.enum(['EMT', 'PVC-rigido', 'PVC-flexible', 'bandeja', 'libre', 'subterranea', 'otro']).optional(),
+  canalizacionDiametroMM: z.number().positive().optional(),
+  canalizacionMaterial: z.enum(['acero', 'PVC', 'aluminio', 'fibrocemento', 'otro']).optional(),
+  capacidadCorrienteA: z.number().positive().optional(),
+  corrienteA: z.number().positive().optional(),
   rotulacionLeida: z.string().optional(),
   procedencia: EsquemaProcedencia
 });
@@ -67,6 +73,42 @@ const EsquemaAnotacionHallazgo = z.object({
   tipo: z.enum(['no-aplica', 'levantamiento-terreno', 'nota-libre']),
   justificacion: z.string(),
   creadoEn: z.string()
+});
+
+const EsquemaAcometida = z.object({
+  tipo: z.enum(['aerea', 'subterranea', 'desde-tablero-superior', 'pendiente']),
+  ubicacion: z.string().max(300).optional(),
+  tableroOrigenId: z.string().min(1).optional(),
+  notas: z.string().max(1000).optional()
+});
+
+const EsquemaAlimentadorEntrada = z.object({
+  seccionConductorMM2: z.number().positive().optional(),
+  longitudM: z.number().positive().optional(),
+  canalizacionTipo: z.enum(['EMT', 'PVC-rigido', 'PVC-flexible', 'bandeja', 'libre', 'subterranea', 'otro']).optional(),
+  canalizacionDiametroMM: z.number().positive().optional(),
+  canalizacionMaterial: z.enum(['acero', 'PVC', 'aluminio', 'fibrocemento', 'otro']).optional(),
+  capacidadCorrienteA: z.number().positive().optional(),
+  conductoresPorFase: z.number().int().positive().optional()
+});
+
+const EsquemaPuestaATierra = z.object({
+  resistenciaOhmMedida: z.number().nonnegative().optional(),
+  resistenciaOhmProyectada: z.number().nonnegative().optional(),
+  instrumentoMedicion: z.string().max(200).optional(),
+  fechaMedicion: z.string().optional(),
+  tipoElectrodo: z.enum(['jabalina', 'malla', 'multielectrodo', 'pendiente']).optional(),
+  notas: z.string().max(1000).optional()
+});
+
+const EsquemaVineta = z.object({
+  numeroLamina: z.string().max(50).optional(),
+  revision: z.string().max(50).optional(),
+  fechaEmision: z.string().optional(),
+  instaladorNombre: z.string().max(200).optional(),
+  instaladorRUT: z.string().max(30).optional(),
+  instaladorClaseSEC: z.enum(['A', 'B', 'C', 'D']).optional(),
+  proyectoNombre: z.string().max(200).optional()
 });
 
 export const EsquemaTablero = z.object({
@@ -82,6 +124,13 @@ export const EsquemaTablero = z.object({
   potenciaContratadaKW: z.number().positive().optional(),
   corrienteNominalA: z.number().positive().optional(),
   espaciosTotales: z.number().int().positive().optional(),
+  frecuenciaHz: z.number().positive().optional(),
+  capacidadNominalA: z.number().positive().optional(),
+  notasGenerales: z.string().max(5000).optional(),
+  acometida: EsquemaAcometida.optional(),
+  alimentadorEntrada: EsquemaAlimentadorEntrada.optional(),
+  puestaATierra: EsquemaPuestaATierra.optional(),
+  vineta: EsquemaVineta.optional(),
   fotos: z.array(EsquemaFoto),
   componentes: z.array(EsquemaComponenteReconciliado),
   pendientes: z.array(EsquemaPendiente),
@@ -101,7 +150,14 @@ export const EsquemaTableroEntrada = EsquemaTablero
     esquemaTierra: z.enum(['TT', 'TN-S', 'TN-C-S', 'IT', 'pendiente']).default('pendiente'),
     potenciaContratadaKW: z.number().positive().optional(),
     corrienteNominalA: z.number().positive().optional(),
-    espaciosTotales: z.number().int().positive().optional()
+    espaciosTotales: z.number().int().positive().optional(),
+    frecuenciaHz: z.number().positive().optional(),
+    capacidadNominalA: z.number().positive().optional(),
+    notasGenerales: z.string().max(5000).optional(),
+    acometida: EsquemaAcometida.optional(),
+    alimentadorEntrada: EsquemaAlimentadorEntrada.optional(),
+    puestaATierra: EsquemaPuestaATierra.optional(),
+    vineta: EsquemaVineta.optional()
   });
 
 // Para actualizar campos manuales del tablero (todo opcional).
@@ -114,4 +170,4 @@ export type TableroEntrada = z.infer<typeof EsquemaTableroEntrada>;
 export type TableroActualizacion = z.infer<typeof EsquemaTableroActualizacion>;
 export type ComponenteActualizacion = z.infer<typeof EsquemaComponenteActualizacion>;
 
-export { EsquemaCircuito, EsquemaAnotacionHallazgo };
+export { EsquemaCircuito, EsquemaAnotacionHallazgo, EsquemaAcometida, EsquemaAlimentadorEntrada, EsquemaPuestaATierra, EsquemaVineta };

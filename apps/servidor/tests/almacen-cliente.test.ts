@@ -69,6 +69,18 @@ describe('almacén Cliente', () => {
     await expect(leerCliente(c.slug)).rejects.toThrow();
   });
 
+  it('persiste instaladorPredeterminado* vía actualizarCliente', async () => {
+    const c = await crearCliente({ nombre: 'Acme' });
+    const actualizado = await actualizarCliente(c.slug, {
+      instaladorPredeterminadoNombre: 'Daniel R.',
+      instaladorPredeterminadoRUT: '12.345.678-9',
+      instaladorPredeterminadoClaseSEC: 'A',
+      proyectoNombrePredeterminado: 'Edificio Acme'
+    });
+    expect(actualizado.instaladorPredeterminadoClaseSEC).toBe('A');
+    expect(actualizado.proyectoNombrePredeterminado).toBe('Edificio Acme');
+  });
+
   it('lanza error claro si el JSON en disco no parsea contra el schema', async () => {
     const c = await crearCliente({ nombre: 'Empresa' });
     const { writeFile } = await import('node:fs/promises');

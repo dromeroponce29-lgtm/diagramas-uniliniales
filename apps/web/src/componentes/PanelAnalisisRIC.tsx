@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Tablero, AnotacionHallazgo } from '@tipos/modelo';
 import { evaluarRIC } from '../../../../tipos/ric/motor.js';
 import { derivarLevantamientosTerreno } from '../../../../tipos/ric/derivar-levantamientos.js';
+import { tableroEstaVacio } from '../../../../tipos/ric/empty-state.js';
 import { useTableroStore } from '../estado/tableroStore.js';
 import { AccionesHallazgo } from './AccionesHallazgo.js';
 
@@ -21,6 +22,7 @@ export function PanelAnalisisRIC({ tablero, clienteSlug, tableroSlug }: Props) {
   const { reemplazarAnotacionesHallazgos } = useTableroStore();
   const [tab, setTab] = useState<'hallazgos' | 'terreno'>('hallazgos');
 
+  // Hooks deben ejecutarse siempre antes de cualquier return condicional
   const hallazgos = useMemo(() => evaluarRIC(tablero), [tablero]);
   const levantamientos = useMemo(() => derivarLevantamientosTerreno(tablero), [tablero]);
 
@@ -53,6 +55,26 @@ export function PanelAnalisisRIC({ tablero, clienteSlug, tableroSlug }: Props) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hallazgos, tablero.anotacionesHallazgos]);
+
+  // Todos los hooks están arriba; ahora es seguro hacer early-return condicional.
+  if (tableroEstaVacio(tablero)) {
+    return (
+      <div className="bg-white border rounded p-4 h-full">
+        <h2 className="font-semibold mb-3">Análisis RIC</h2>
+        <div className="text-center py-8 space-y-3">
+          <p className="text-slate-700 font-medium">Tablero sin datos</p>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">
+            Para que aparezca el análisis RIC necesitamos al menos uno de:
+          </p>
+          <ul className="text-sm text-slate-500 list-disc list-inside max-w-md mx-auto text-left">
+            <li>Fotos del tablero subidas</li>
+            <li>Datos manuales en el tab "Datos generales"</li>
+            <li>Componentes o circuitos ingresados manualmente</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white border rounded p-4 h-full overflow-auto">

@@ -126,6 +126,13 @@ export async function actualizarTablero(
     ...(parche.potenciaContratadaKW !== undefined && { potenciaContratadaKW: parche.potenciaContratadaKW }),
     ...(parche.corrienteNominalA !== undefined && { corrienteNominalA: parche.corrienteNominalA }),
     ...(parche.espaciosTotales !== undefined && { espaciosTotales: parche.espaciosTotales }),
+    ...(parche.frecuenciaHz !== undefined && { frecuenciaHz: parche.frecuenciaHz }),
+    ...(parche.capacidadNominalA !== undefined && { capacidadNominalA: parche.capacidadNominalA }),
+    ...(parche.notasGenerales !== undefined && { notasGenerales: parche.notasGenerales }),
+    ...(parche.acometida !== undefined && { acometida: parche.acometida }),
+    ...(parche.alimentadorEntrada !== undefined && { alimentadorEntrada: parche.alimentadorEntrada }),
+    ...(parche.puestaATierra !== undefined && { puestaATierra: parche.puestaATierra }),
+    ...(parche.vineta !== undefined && { vineta: parche.vineta }),
     actualizadoEn: new Date().toISOString()
   });
   await escribirJsonAtomico(archivoTablero(slugCliente, slugTablero), actualizado);
