@@ -8,10 +8,11 @@ import { sugerirPartidasDesdeHallazgos } from '../../../../tipos/ric/recetas.js'
 function clp(n: number): string { return n.toLocaleString('es-CL'); }
 
 function FilaPartida({
-  partida, onCambiarCantidad
+  partida, onCambiarCantidad, onEliminar
 }: {
   partida: PlanNormalizacion['partidas'][number];
   onCambiarCantidad: (id: string, cantidad: number) => void;
+  onEliminar: (id: string) => void;
 }) {
   const [cantLocal, setCantLocal] = useState<number>(partida.cantidad);
   useEffect(() => setCantLocal(partida.cantidad), [partida.cantidad]);
@@ -35,6 +36,9 @@ function FilaPartida({
       <td className="py-1 pr-3">{partida.unidad}</td>
       <td className="py-1 pr-3 text-right">{clp(partida.precioUnitarioCLP)}</td>
       <td className="py-1 pr-3 text-right">{clp(Math.round(cantLocal * partida.precioUnitarioCLP))}</td>
+      <td className="py-1 text-right">
+        <button onClick={() => onEliminar(partida.id)} aria-label="Eliminar" className="text-red-600 px-1">×</button>
+      </td>
     </tr>
   );
 }
@@ -104,6 +108,15 @@ export function VistaPlan() {
     programarGuardado();
   }
 
+  function eliminarPartida(id: string) {
+    if (!plan) return;
+    const partidas = plan.partidas.filter(p => p.id !== id);
+    const subtotal = partidas.reduce((a, x) => a + x.totalCLP, 0);
+    const iva = plan.incluyeIVA ? Math.round(subtotal * plan.ivaPct / 100) : 0;
+    setPlan({ ...plan, partidas, subtotalCLP: subtotal, ivaCLP: iva, totalCLP: subtotal + iva });
+    programarGuardado();
+  }
+
   if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
   if (!plan) return <div className="p-4">Cargando plan…</div>;
 
@@ -111,7 +124,20 @@ export function VistaPlan() {
     <div className="p-4 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-xl font-semibold">Plan #{plan.numero}</h1>
-        <Link to={`/clientes/${clienteSlug}/tableros/${tableroSlug}?tab=ric`} className="text-sm text-blue-600 hover:underline">← Volver al tablero</Link>
+        <div className="flex items-center gap-2">
+          <Link to={`/clientes/${clienteSlug}/tableros/${tableroSlug}?tab=ric`} className="text-sm text-blue-600 hover:underline">← Volver al tablero</Link>
+          <button
+            onClick={async () => {
+              if (!confirm(`Eliminar el plan #${plan.numero}? Esta acción no se puede deshacer.`)) return;
+              if (!clienteSlug || !tableroSlug) return;
+              try {
+                await apiPlanes.eliminar(clienteSlug, tableroSlug, plan.id);
+                window.location.href = `/clientes/${clienteSlug}/tableros/${tableroSlug}?tab=ric`;
+              } catch (e) { setError(String(e)); }
+            }}
+            className="text-sm text-red-600 hover:underline ml-2"
+          >Eliminar plan</button>
+        </div>
       </div>
       <div className="text-sm text-slate-600 mb-4 flex items-center gap-3 flex-wrap">
         <span>Estado:
@@ -191,11 +217,12 @@ export function VistaPlan() {
                 <th className="py-1 pr-3">Un.</th>
                 <th className="py-1 pr-3 text-right">P. Unit.</th>
                 <th className="py-1 pr-3 text-right">Total</th>
+                <th className="py-1"></th>
               </tr>
             </thead>
             <tbody>
               {plan.partidas.map(p => (
-                <FilaPartida key={p.id} partida={p} onCambiarCantidad={cambiarCantidad} />
+                <FilaPartida key={p.id} partida={p} onCambiarCantidad={cambiarCantidad} onEliminar={eliminarPartida} />
               ))}
             </tbody>
           </table>
