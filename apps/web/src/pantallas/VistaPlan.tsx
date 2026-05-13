@@ -113,12 +113,40 @@ export function VistaPlan() {
         <h1 className="text-xl font-semibold">Plan #{plan.numero}</h1>
         <Link to={`/clientes/${clienteSlug}/tableros/${tableroSlug}?tab=ric`} className="text-sm text-blue-600 hover:underline">← Volver al tablero</Link>
       </div>
-      <div className="text-sm text-slate-600 mb-4">
-        Estado: <span className="font-medium">{plan.estado}</span>
-        {' · '}
-        Creado: {new Date(plan.creadoEn).toLocaleDateString('es-CL')}
-        {' · '}
-        IVA: {plan.incluyeIVA ? `${plan.ivaPct}%` : 'no incluido'}
+      <div className="text-sm text-slate-600 mb-4 flex items-center gap-3 flex-wrap">
+        <span>Estado:
+          <select
+            value={plan.estado}
+            onChange={async e => {
+              if (!clienteSlug || !tableroSlug) return;
+              try {
+                const out = await apiPlanes.actualizar(clienteSlug, tableroSlug, plan.id, {
+                  estado: e.target.value as PlanNormalizacion['estado']
+                });
+                setPlan(out);
+              } catch (err) { setError(String(err)); }
+            }}
+            className="border rounded px-1 py-0.5 ml-1"
+          >
+            {(['borrador','enviado','aceptado','rechazado'] as const).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </span>
+        <span>Creado: {new Date(plan.creadoEn).toLocaleDateString('es-CL')}</span>
+        <label className="ml-1">
+          IVA <input
+            type="checkbox"
+            checked={plan.incluyeIVA}
+            onChange={async e => {
+              if (!clienteSlug || !tableroSlug) return;
+              try {
+                const out = await apiPlanes.actualizar(clienteSlug, tableroSlug, plan.id, {
+                  incluyeIVA: e.target.checked
+                });
+                setPlan(out);
+              } catch (err) { setError(String(err)); }
+            }}
+          /> {plan.ivaPct}%
+        </label>
       </div>
 
       <section className="bg-white border rounded p-3">
@@ -200,6 +228,21 @@ export function VistaPlan() {
         <div className="flex justify-between py-0.5"><span>IVA:</span><span>CLP {clp(plan.ivaCLP)}</span></div>
         <div className="flex justify-between py-1 font-semibold border-t"><span>Total:</span><span>CLP {clp(plan.totalCLP)}</span></div>
       </section>
+
+      <div className="mt-4">
+        <label className="block text-sm font-medium mb-1">Notas</label>
+        <textarea
+          value={plan.notas ?? ''}
+          onChange={e => {
+            if (!plan) return;
+            const nuevo = { ...plan, notas: e.target.value };
+            setPlan(nuevo);
+            programarGuardado();
+          }}
+          rows={3}
+          className="w-full border rounded p-2 text-sm"
+        />
+      </div>
     </div>
   );
 }
