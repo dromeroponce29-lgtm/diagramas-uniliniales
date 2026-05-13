@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
-import type { Tablero, AnotacionHallazgo } from '@tipos/modelo';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import type { Tablero, AnotacionHallazgo, PlanNormalizacion } from '@tipos/modelo';
+import { apiPlanes } from '../api/cliente.js';
 import { evaluarRIC } from '../../../../tipos/ric/motor.js';
 import { derivarLevantamientosTerreno } from '../../../../tipos/ric/derivar-levantamientos.js';
 import { tableroEstaVacio } from '../../../../tipos/ric/empty-state.js';
@@ -148,6 +150,51 @@ export function PanelAnalisisRIC({ tablero, clienteSlug, tableroSlug }: Props) {
           ))}
         </ul>
       )}
+
+      <SeccionPlanes clienteSlug={clienteSlug} tableroSlug={tableroSlug} />
     </div>
+  );
+}
+
+function SeccionPlanes({ clienteSlug, tableroSlug }: { clienteSlug: string; tableroSlug: string }) {
+  const [planes, setPlanes] = useState<PlanNormalizacion[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  function recargar() {
+    apiPlanes.listar(clienteSlug, tableroSlug).then(setPlanes).catch(e => setError(String(e)));
+  }
+  useEffect(recargar, [clienteSlug, tableroSlug]);
+
+  async function nuevoPlan() {
+    try {
+      const p = await apiPlanes.crear(clienteSlug, tableroSlug, { autoSugerir: true });
+      navigate(`/clientes/${clienteSlug}/tableros/${tableroSlug}/planes/${p.id}`);
+    } catch (e) { setError(String(e)); }
+  }
+
+  return (
+    <section className="mt-4 border-t pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold text-sm">Planes de normalización ({planes.length})</h3>
+        <button onClick={nuevoPlan} className="text-sm text-blue-600 hover:underline">+ Nuevo plan</button>
+      </div>
+      {error && <div className="text-red-600 text-sm">{error}</div>}
+      {planes.length === 0 ? (
+        <p className="text-slate-500 italic text-sm">Aún no hay planes de normalización para este tablero.</p>
+      ) : (
+        <ul className="text-sm space-y-1">
+          {planes.slice().reverse().map(p => (
+            <li key={p.id} className="flex items-center justify-between">
+              <Link
+                to={`/clientes/${clienteSlug}/tableros/${tableroSlug}/planes/${p.id}`}
+                className="text-blue-600 hover:underline"
+              >Plan #{p.numero}</Link>
+              <span className="text-slate-600">CLP {p.totalCLP.toLocaleString('es-CL')} · {p.estado}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
