@@ -4,6 +4,7 @@ import { crearRutasClientes } from './rutas/clientes.js';
 import { crearRutasTableros } from './rutas/tableros.js';
 import { crearRutasCatalogo } from './rutas/catalogo.js';
 import { crearRutasPlanes } from './rutas/planes.js';
+import { crearRutasExportacion } from './rutas/exportacion.js';
 import type { ClienteAgenteIA } from './agentes/interfaz.js';
 
 export interface DepsApp {
@@ -27,6 +28,7 @@ export function crearApp(deps: DepsApp): Express {
   }));
   app.use('/api', crearRutasCatalogo());
   app.use('/api', crearRutasPlanes());
+  app.use('/api', crearRutasExportacion());
 
   return app;
 }

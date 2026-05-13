@@ -119,6 +119,7 @@ function consolidarComponente(
       ...(c.polos !== null && { polos: c.polos }),
       ...(c.curva !== null && { curva: c.curva }),
       ...(c.sensibilidadMA !== null && { sensibilidadMA: c.sensibilidadMA }),
+      ...(c.capacidadCortocircuitoKA != null && { capacidadCortocircuitoKA: c.capacidadCortocircuitoKA }),
       ...(c.posicion !== null && { posicionEnTablero: c.posicion }),
       procedencia: {
         fuente: 'foto-claude',
@@ -137,6 +138,7 @@ function consolidarComponente(
       ...(o.polos !== null && { polos: o.polos }),
       ...(o.curva !== null && { curva: o.curva }),
       ...(o.sensibilidadMA !== null && { sensibilidadMA: o.sensibilidadMA }),
+      ...(o.capacidadCortocircuitoKA != null && { capacidadCortocircuitoKA: o.capacidadCortocircuitoKA }),
       ...(o.posicion !== null && { posicionEnTablero: o.posicion }),
       procedencia: {
         fuente: 'foto-openai',
@@ -156,11 +158,16 @@ function consolidarComponente(
   const polos = resolverCampo('polos', cn.polos, on.polos);
   const curva = resolverCampo('curva', cn.curva, on.curva);
   const sensibilidadMA = resolverCampo('sensibilidadMA', cn.sensibilidadMA, on.sensibilidadMA);
+  const capacidadCortocircuitoKA = resolverCampo(
+    'capacidadCortocircuitoKA',
+    cn.capacidadCortocircuitoKA ?? null,
+    on.capacidadCortocircuitoKA ?? null
+  );
 
   // La procedencia agregada toma el peor caso de confianza por campo
   // (discrepancia > media > alta), considerando solo los campos que efectivamente
   // tienen valor — un campo ausente en ambos agentes no debe degradar la confianza.
-  const camposResueltos = [marca, modelo, calibreA, polos, curva, sensibilidadMA];
+  const camposResueltos = [marca, modelo, calibreA, polos, curva, sensibilidadMA, capacidadCortocircuitoKA];
   const camposConValor = camposResueltos.filter(r => r.valor !== undefined);
   const rangoConfianza = ['alta', 'media', 'baja', 'discrepancia'] as const;
   const peor = camposConValor
@@ -187,6 +194,7 @@ function consolidarComponente(
     ...(polos.valor !== undefined && { polos: polos.valor as 1 | 2 | 3 | 4 }),
     ...(curva.valor !== undefined && { curva: curva.valor as 'B' | 'C' | 'D' | 'K' }),
     ...(sensibilidadMA.valor !== undefined && { sensibilidadMA: sensibilidadMA.valor as number }),
+    ...(capacidadCortocircuitoKA.valor !== undefined && { capacidadCortocircuitoKA: capacidadCortocircuitoKA.valor as number }),
     ...(cn.posicion && { posicionEnTablero: cn.posicion }),
     procedencia: {
       fuente: fuenteAgregada,
@@ -205,16 +213,17 @@ function unirRotulaciones(
   a: RotulacionCircuito[],
   b: RotulacionCircuito[]
 ): RotulacionCircuito[] {
-  const vistos = new Set<string>();
-  const resultado: RotulacionCircuito[] = [];
+  const vistos = new Map<string, RotulacionCircuito>();
   for (const r of [...a, ...b]) {
     const clave = `${r.numero ?? '?'}::${r.textoOriginal.trim().toLowerCase()}`;
-    if (!vistos.has(clave)) {
-      vistos.add(clave);
-      resultado.push(r);
+    const existente = vistos.get(clave);
+    if (!existente) {
+      vistos.set(clave, r);
+    } else if (!existente.destinoLeido && r.destinoLeido) {
+      vistos.set(clave, { ...existente, destinoLeido: r.destinoLeido });
     }
   }
-  return resultado;
+  return Array.from(vistos.values());
 }
 
 export function reconciliar(entrada: EntradaReconciliacion): ResultadoExtraccion {

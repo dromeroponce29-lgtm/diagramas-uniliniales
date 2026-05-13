@@ -22,6 +22,7 @@ import {
   reemplazarAnotacionesHallazgos
 } from '../almacen/tablero.js';
 import { reconciliar } from '../agentes/reconciliador.js';
+import type { ExtraccionAgente } from '../esquemas/extraccion.js';
 import { dirFotos, archivoFoto, dirExtracciones, archivoExtraccion } from '../almacen/rutas.js';
 import { escribirJsonAtomico } from '../almacen/escritura.js';
 import { nuevoId } from '../util/ulid.js';
@@ -143,17 +144,19 @@ export function crearRutasTableros(deps: Deps): Router {
       return;
     }
 
-    const claudeExtraccion = claudeRes.status === 'fulfilled' ? claudeRes.value : {
-      calidadFoto: 'aceptable' as const,
+    const claudeExtraccion: ExtraccionAgente = claudeRes.status === 'fulfilled' ? claudeRes.value : {
+      calidadFoto: 'aceptable',
       problemasFoto: ['Claude falló en esta foto'],
       componentesDetectados: [],
-      rotulacionCircuitosLeida: []
+      rotulacionCircuitosLeida: [],
+      datosGeneralesObservados: null
     };
-    const openaiExtraccion = openaiRes.status === 'fulfilled' ? openaiRes.value : {
-      calidadFoto: 'aceptable' as const,
+    const openaiExtraccion: ExtraccionAgente = openaiRes.status === 'fulfilled' ? openaiRes.value : {
+      calidadFoto: 'aceptable',
       problemasFoto: ['OpenAI falló en esta foto'],
       componentesDetectados: [],
-      rotulacionCircuitosLeida: []
+      rotulacionCircuitosLeida: [],
+      datosGeneralesObservados: null
     };
 
     // Guardar extracciones crudas (auditoría)
@@ -168,6 +171,27 @@ export function crearRutasTableros(deps: Deps): Router {
     });
     await escribirJsonAtomico(archivoExtraccion(c!, t!, fotoId, 'reconciliado'), reconciliado);
 
+    // Consolidar datos generales observados por la IA (prioriza Claude;
+    // si solo OpenAI los reportó, los usa con esa fuente; si ambos coinciden, foto-ambos).
+    const dC = claudeExtraccion.datosGeneralesObservados;
+    const dO = openaiExtraccion.datosGeneralesObservados;
+    let datosGeneralesObservadosIA: Foto['datosGeneralesObservadosIA'];
+    if (dC || dO) {
+      const fuente: 'foto-claude' | 'foto-openai' | 'foto-ambos' =
+        dC && dO ? 'foto-ambos' : dC ? 'foto-claude' : 'foto-openai';
+      const merged = { ...(dO ?? {}), ...(dC ?? {}) };  // claude pisa openai
+      datosGeneralesObservadosIA = {
+        ...(merged.tensionSistema != null && { tensionSistema: merged.tensionSistema }),
+        ...(merged.esquemaTierra != null && { esquemaTierra: merged.esquemaTierra }),
+        ...(merged.frecuenciaHz != null && { frecuenciaHz: merged.frecuenciaHz }),
+        ...(merged.capacidadNominalA != null && { capacidadNominalA: merged.capacidadNominalA }),
+        ...(merged.marcaGabinete != null && { marcaGabinete: merged.marcaGabinete }),
+        ...(merged.modeloGabinete != null && { modeloGabinete: merged.modeloGabinete }),
+        ...(merged.observaciones != null && { observaciones: merged.observaciones }),
+        fuente
+      };
+    }
+
     // Registrar la foto en el tablero junto con sus componentes (escritura atómica).
     const nuevaFoto: Foto = {
       id: fotoId,
@@ -175,7 +199,8 @@ export function crearRutasTableros(deps: Deps): Router {
       mimeType: mime,
       calidadFoto: reconciliado.calidadFoto,
       problemasFoto: reconciliado.problemasFoto,
-      subidaEn: new Date().toISOString()
+      subidaEn: new Date().toISOString(),
+      ...(datosGeneralesObservadosIA && { datosGeneralesObservadosIA })
     };
     const tableroFinal = await agregarFotoYComponentes(c!, t!, nuevaFoto, reconciliado.componentes);
     res.json(tableroFinal);
