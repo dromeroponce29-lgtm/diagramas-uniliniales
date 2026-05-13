@@ -7,6 +7,7 @@ import { derivarLevantamientosTerreno } from '../../../../tipos/ric/derivar-leva
 import { tableroEstaVacio } from '../../../../tipos/ric/empty-state.js';
 import { useTableroStore } from '../estado/tableroStore.js';
 import { AccionesHallazgo } from './AccionesHallazgo.js';
+import { PanelAuditoria } from './PanelAuditoria.js';
 
 interface Props {
   tablero: Tablero;
@@ -163,6 +164,7 @@ export function PanelAnalisisRIC({ tablero, clienteSlug, tableroSlug }: Props) {
         </>
       )}
 
+      <PanelAuditoria clienteSlug={clienteSlug} tableroSlug={tableroSlug} />
       <SeccionPlanes clienteSlug={clienteSlug} tableroSlug={tableroSlug} />
     </div>
   );

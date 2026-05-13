@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { crearApp } from './app.js';
 import { AgenteClaude } from './agentes/claude.js';
 import { AgenteOpenAI } from './agentes/openai.js';
+import { auditarTablero } from './agentes/auditoria.js';
 
 const PUERTO = Number(process.env.PUERTO ?? 3001);
 
@@ -19,7 +20,12 @@ if (!claveAnthropic || !claveOpenai) {
 
 const app = crearApp({
   agenteClaude: new AgenteClaude(claveAnthropic, modeloClaude),
-  agenteOpenai: new AgenteOpenAI(claveOpenai, modeloOpenai)
+  agenteOpenai: new AgenteOpenAI(claveOpenai, modeloOpenai),
+  ejecutarAuditoria: (tablero, slugCliente, slugTablero) =>
+    auditarTablero(tablero, slugCliente, slugTablero, {
+      apiKey: claveAnthropic,
+      modelo: modeloClaude
+    })
 });
 
 app.listen(PUERTO, () => {
