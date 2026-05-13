@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EsquemaPlanNormalizacion } from './cotizacion.js';
 
 const EsquemaProcedencia = z.object({
   fuente: z.enum(['foto-claude', 'foto-openai', 'foto-ambos', 'manual', 'pendiente']),
@@ -138,7 +139,8 @@ export const EsquemaTablero = z.object({
   creadoEn: z.string(),
   actualizadoEn: z.string(),
   circuitos: z.array(EsquemaCircuito).default([]),
-  anotacionesHallazgos: z.array(EsquemaAnotacionHallazgo).default([])
+  anotacionesHallazgos: z.array(EsquemaAnotacionHallazgo).default([]),
+  planesNormalizacion: z.array(EsquemaPlanNormalizacion).default([])
 });
 
 // Para input al crear un tablero.

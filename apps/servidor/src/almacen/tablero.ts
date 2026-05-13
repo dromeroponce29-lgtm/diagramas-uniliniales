@@ -64,6 +64,7 @@ export async function crearTablero(slugCliente: string, entrada: TableroEntrada)
     ...(entrada.corrienteNominalA !== undefined && { corrienteNominalA: entrada.corrienteNominalA }),
     circuitos: [],
     anotacionesHallazgos: [],
+    planesNormalizacion: [],
     fotos: [],
     componentes: [],
     pendientes: [],
