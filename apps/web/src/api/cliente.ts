@@ -1,4 +1,8 @@
-import type { Cliente, Tablero } from '@tipos/modelo';
+import type {
+  Cliente, Tablero,
+  ItemCatalogo, PlanNormalizacion,
+  EstadoPlan, UnidadCatalogo, CategoriaCatalogo
+} from '@tipos/modelo';
 
 async function pedir<T>(metodo: string, url: string, body?: unknown): Promise<T> {
   const r = await fetch(url, {
@@ -84,4 +88,56 @@ export const apiTableros = {
 
   reemplazarAnotacionesHallazgos: (clienteSlug: string, tableroSlug: string, anotaciones: unknown[]) =>
     pedir<Tablero>('PUT', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/anotaciones-ric`, { anotaciones })
+};
+
+export interface ItemCatalogoEntrada {
+  id?: string;
+  codigo: string;
+  descripcion: string;
+  tipo: 'material' | 'labor';
+  unidad: UnidadCatalogo;
+  precioUnitarioCLP: number;
+  categoria: CategoriaCatalogo;
+  notas?: string;
+}
+
+export interface PartidaEntrada {
+  id?: string;
+  itemCodigo: string;
+  itemDescripcion: string;
+  unidad: UnidadCatalogo;
+  precioUnitarioCLP: number;
+  cantidad: number;
+  hallazgoReglaId?: string;
+  hallazgoComponenteId?: string;
+  hallazgoCircuitoId?: string;
+  notas?: string;
+}
+
+export interface PlanActualizacionEntrada {
+  estado?: EstadoPlan;
+  incluyeIVA?: boolean;
+  ivaPct?: number;
+  partidas?: PartidaEntrada[];
+  notas?: string;
+}
+
+export const apiCatalogo = {
+  leer: (clienteSlug: string) =>
+    pedir<ItemCatalogo[]>('GET', `/api/clientes/${clienteSlug}/catalogo`),
+  reemplazar: (clienteSlug: string, items: ItemCatalogoEntrada[]) =>
+    pedir<ItemCatalogo[]>('PUT', `/api/clientes/${clienteSlug}/catalogo`, items),
+  restaurarSemilla: (clienteSlug: string) =>
+    pedir<ItemCatalogo[]>('POST', `/api/clientes/${clienteSlug}/catalogo/semilla`)
+};
+
+export const apiPlanes = {
+  listar: (clienteSlug: string, tableroSlug: string) =>
+    pedir<PlanNormalizacion[]>('GET', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/planes`),
+  crear: (clienteSlug: string, tableroSlug: string, opts: { autoSugerir: boolean }) =>
+    pedir<PlanNormalizacion>('POST', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/planes`, opts),
+  actualizar: (clienteSlug: string, tableroSlug: string, planId: string, parche: PlanActualizacionEntrada) =>
+    pedir<PlanNormalizacion>('PUT', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/planes/${planId}`, parche),
+  eliminar: (clienteSlug: string, tableroSlug: string, planId: string) =>
+    pedir<void>('DELETE', `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/planes/${planId}`)
 };
