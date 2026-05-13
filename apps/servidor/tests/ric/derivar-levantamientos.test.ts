@@ -72,11 +72,11 @@ describe('derivarLevantamientosTerreno', () => {
     expect(anotacionItem).toBeDefined();
   });
 
-  it('incluye hallazgos pendiente-verificar generados al vuelo', () => {
+  it('NO incluye hallazgos normativos pendiente-verificar (esos son cumplimiento, no datos del diagrama)', () => {
     const t = tableroVacio();
     const ls = derivarLevantamientosTerreno(t);
-    const algunoDeRegla = ls.some(l => l.origen === 'regla-ric');
-    expect(algunoDeRegla).toBe(true);
+    const algunoDeRegla = ls.some(l => l.origen === ('regla-ric' as unknown as string));
+    expect(algunoDeRegla).toBe(false);
   });
 
   it('incluye campos del diagrama RIC N°18 que faltan completar', () => {

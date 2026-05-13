@@ -95,7 +95,11 @@ export function PanelAnalisisRIC({ tablero, clienteSlug, tableroSlug }: Props) {
       </div>
 
       {tab === 'hallazgos' && (
-        <ul className="space-y-3">
+        <>
+          <p className="text-xs text-slate-500 mb-2 italic">
+            Desviaciones técnicas del tablero respecto a los Pliegos Técnicos RIC (SEC Chile) y normas internacionales aplicables.
+          </p>
+          <ul className="space-y-3">
           {ordenados.map((h, i) => {
             const anots = anotacionesPara(h.reglaId, h.componenteId, h.circuitoId);
             const silenciado = anots.some(a => a.tipo === 'no-aplica');
@@ -125,30 +129,38 @@ export function PanelAnalisisRIC({ tablero, clienteSlug, tableroSlug }: Props) {
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </>
       )}
 
       {tab === 'terreno' && (
-        <ul className="space-y-2">
-          {levantamientos.length === 0 && (
-            <li className="text-sm text-slate-500">Sin levantamientos pendientes.</li>
-          )}
-          {levantamientos.map(l => (
-            <li key={l.id} className="p-2 border rounded flex items-start gap-2">
-              <span className={`text-xs px-1 rounded ${
-                l.prioridad === 'alta' ? 'bg-red-100 text-red-700' :
-                l.prioridad === 'media' ? 'bg-amber-100 text-amber-700' :
-                'bg-slate-100 text-slate-700'
-              }`}>{l.prioridad}</span>
-              <div className="flex-1">
-                <div className="text-sm">{l.descripcion}</div>
-                <div className="text-xs text-slate-500">
-                  Origen: {l.origen}{l.parteRIC ? ` · ${l.parteRIC}` : ''}
+        <>
+          <p className="text-xs text-slate-500 mb-2 italic">
+            Datos que faltan en componentes y conexiones del tablero para completar el diagrama unilineal. No incluyen
+            cuestiones de cumplimiento normativo — esas viven en la pestaña "Hallazgos".
+          </p>
+          <ul className="space-y-2">
+            {levantamientos.length === 0 && (
+              <li className="text-sm text-slate-500">Sin levantamientos pendientes — el diagrama tiene toda la información.</li>
+            )}
+            {levantamientos.map(l => (
+              <li key={l.id} className="p-2 border rounded flex items-start gap-2">
+                <span className={`text-xs px-1 rounded ${
+                  l.prioridad === 'alta' ? 'bg-red-100 text-red-700' :
+                  l.prioridad === 'media' ? 'bg-amber-100 text-amber-700' :
+                  'bg-slate-100 text-slate-700'
+                }`}>{l.prioridad}</span>
+                <div className="flex-1">
+                  <div className="text-sm">{l.descripcion}</div>
+                  <div className="text-xs text-slate-500">
+                    {l.categoria ? `${l.categoria}` : `origen: ${l.origen}`}
+                    {l.instrumentoSugerido && ` · instrumento: ${l.instrumentoSugerido}`}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <SeccionPlanes clienteSlug={clienteSlug} tableroSlug={tableroSlug} />
