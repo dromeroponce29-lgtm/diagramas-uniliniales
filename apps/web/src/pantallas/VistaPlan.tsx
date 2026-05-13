@@ -144,11 +144,67 @@ export function VistaPlan() {
         )}
       </section>
 
+      <AgregarPartida
+        catalogo={catalogo}
+        onAgregar={(item, cantidad) => {
+          if (!plan) return;
+          const nueva = {
+            id: `tmp-${Date.now()}`,
+            itemCodigo: item.codigo,
+            itemDescripcion: item.descripcion,
+            unidad: item.unidad,
+            precioUnitarioCLP: item.precioUnitarioCLP,
+            cantidad,
+            totalCLP: Math.round(item.precioUnitarioCLP * cantidad)
+          };
+          const partidas = [...plan.partidas, nueva];
+          const subtotal = partidas.reduce((a, x) => a + x.totalCLP, 0);
+          const iva = plan.incluyeIVA ? Math.round(subtotal * plan.ivaPct / 100) : 0;
+          setPlan({ ...plan, partidas, subtotalCLP: subtotal, ivaCLP: iva, totalCLP: subtotal + iva });
+          programarGuardado();
+        }}
+      />
+
       <section className="mt-3 ml-auto w-72 text-sm">
         <div className="flex justify-between py-0.5"><span>Subtotal:</span><span>CLP {clp(plan.subtotalCLP)}</span></div>
         <div className="flex justify-between py-0.5"><span>IVA:</span><span>CLP {clp(plan.ivaCLP)}</span></div>
         <div className="flex justify-between py-1 font-semibold border-t"><span>Total:</span><span>CLP {clp(plan.totalCLP)}</span></div>
       </section>
+    </div>
+  );
+}
+
+function AgregarPartida({ catalogo, onAgregar }: {
+  catalogo: ItemCatalogo[];
+  onAgregar: (item: ItemCatalogo, cantidad: number) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [seleccion, setSeleccion] = useState<string>('');
+  const [cantidad, setCantidad] = useState<number>(1);
+
+  if (!abierto) {
+    return <button onClick={() => setAbierto(true)} className="mt-2 text-sm text-blue-600 hover:underline">+ Agregar partida</button>;
+  }
+
+  return (
+    <div className="mt-2 p-2 border rounded bg-amber-50 flex gap-2 items-center text-sm">
+      <select value={seleccion} onChange={e => setSeleccion(e.target.value)} className="border rounded px-1 py-0.5 flex-1">
+        <option value="">— seleccionar item del catálogo —</option>
+        {catalogo.map(i => (
+          <option key={i.id} value={i.id}>{i.codigo} — {i.descripcion}</option>
+        ))}
+      </select>
+      <input type="number" min={0} step="0.25" value={cantidad} onChange={e => setCantidad(Number(e.target.value))} className="border rounded px-1 py-0.5 w-20 text-right" />
+      <button
+        onClick={() => {
+          const it = catalogo.find(c => c.id === seleccion);
+          if (!it) { alert('Seleccioná un item'); return; }
+          onAgregar(it, cantidad);
+          setSeleccion(''); setCantidad(1); setAbierto(false);
+        }}
+        className="px-2 py-0.5 bg-blue-600 text-white rounded"
+      >Agregar</button>
+      <button onClick={() => setAbierto(false)} className="px-2 py-0.5 border rounded">×</button>
     </div>
   );
 }
