@@ -3,6 +3,7 @@ import { crearApp } from './app.js';
 import { AgenteClaude } from './agentes/claude.js';
 import { AgenteOpenAI } from './agentes/openai.js';
 import { auditarTablero } from './agentes/auditoria.js';
+import { refinarConversacion } from './agentes/refinador.js';
 
 const PUERTO = Number(process.env.PUERTO ?? 3001);
 
@@ -23,6 +24,11 @@ const app = crearApp({
   agenteOpenai: new AgenteOpenAI(claveOpenai, modeloOpenai),
   ejecutarAuditoria: (tablero, slugCliente, slugTablero) =>
     auditarTablero(tablero, slugCliente, slugTablero, {
+      apiKey: claveAnthropic,
+      modelo: modeloClaude
+    }),
+  ejecutarRefinador: (tablero, slugCliente, slugTablero, mensaje, historial) =>
+    refinarConversacion(tablero, slugCliente, slugTablero, mensaje, historial, {
       apiKey: claveAnthropic,
       modelo: modeloClaude
     })

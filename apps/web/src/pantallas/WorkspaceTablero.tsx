@@ -99,6 +99,8 @@ export function WorkspaceTablero() {
           <TabDiagrama
             tablero={tablero}
             cliente={cliente}
+            clienteSlug={clienteSlug}
+            tableroSlug={tableroSlug}
             onClicComponente={setComponenteResaltadoId}
           />
         )}
