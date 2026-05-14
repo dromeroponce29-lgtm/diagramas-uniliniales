@@ -80,6 +80,7 @@ export function DiagramaSVG({ tablero, onClicComponente }: Props) {
             tieneFase={arbol.barras.tieneFase || true}
             tieneNeutro={arbol.barras.tieneNeutro || true}
             tieneTierra={arbol.barras.tieneTierra || true}
+            trifasico={arbol.tensionSistema === '380V-trif' || arbol.tensionSistema === '380V/220V-trif-n'}
             tierra={arbol.tierra}
           />
 

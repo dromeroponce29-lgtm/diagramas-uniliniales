@@ -99,6 +99,24 @@ export function crearRutasTableros(deps: Deps): Router {
     }
   });
 
+  // Servir la imagen binaria de una foto por id.
+  router.get('/clientes/:c/tableros/:t/fotos/:fotoId', async (req, res) => {
+    try {
+      const { c, t, fotoId } = req.params;
+      const tablero = await leerTablero(c!, t!);
+      const foto = tablero.fotos.find(f => f.id === fotoId);
+      if (!foto) {
+        res.status(404).json({ error: `Foto ${fotoId} no existe en este tablero` });
+        return;
+      }
+      const ext = foto.mimeType.split('/')[1]?.split('+')[0] ?? 'jpg';
+      res.setHeader('Content-Type', foto.mimeType);
+      res.sendFile(archivoFoto(c!, t!, fotoId!, ext));
+    } catch (e) {
+      res.status(404).json({ error: String(e) });
+    }
+  });
+
   router.post('/clientes/:c/tableros/:t/fotos', upload.single('foto'), async (req, res) => {
     if (!req.file) {
       res.status(400).json({ error: 'Falta el archivo "foto"' });
