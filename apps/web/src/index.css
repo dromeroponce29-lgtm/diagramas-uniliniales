@@ -11,3 +11,25 @@ body {
   background: #f8fafc;
   color: #0f172a;
 }
+
+/* =========================================================================
+   Modo de impresión: lámina unilineal según RIC (Pliego N°5).
+   Activado dinámicamente con body[data-print-mode="unilineal-ric"] desde
+   el botón "Imprimir unilineal (RIC)". Oculta toda UI no-normativa
+   (header, tabs, foto comparación, chat refinador, botones de acción) y
+   deja solo: notas generales, diagrama unilineal, cuadro de cargas,
+   cuadro de alimentadores, simbología y viñeta.
+
+   El formato A3 landscape con márgenes 10 mm se inyecta dinámicamente
+   por el componente que activa el modo (ver Lamina.tsx) — @page no
+   se puede condicionar por selector, así que se inyecta como <style>
+   temporal mientras dura la impresión.
+   ========================================================================= */
+@media print {
+  body[data-print-mode="unilineal-ric"] .imprimir-unilineal-oculto {
+    display: none !important;
+  }
+  body[data-print-mode="unilineal-ric"] {
+    background: white !important;
+  }
+}
