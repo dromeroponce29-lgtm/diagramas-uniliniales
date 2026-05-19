@@ -1,0 +1,2982 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Análisis y Estudio de Proyectos Eléctricos – RIC SEC Chile</title>
+
+<!--
+==============================================================================
+  ANÁLISIS Y ESTUDIO DE PROYECTOS ELÉCTRICOS – PROTOTIPO HTML AUTOCONTENIDO
+==============================================================================
+  Autor / contexto: Daniel — Ingeniería eléctrica Chile (RIC SEC)
+  Stack: HTML + CSS + JS puro (sin build). LocalStorage para persistencia.
+
+  ARQUITECTURA PROPUESTA (para evolución a producto):
+  -----------------------------------------------------------------------------
+  Front-end (este archivo):
+    - SPA con navegación por pestañas.
+    - Renderizado y cálculos del lado cliente.
+    - LocalStorage para persistencia local del proyecto activo.
+
+  Back-end (siguiente fase, NO incluido aquí):
+    - Node.js + Express (o Python FastAPI).
+    - Procesamiento de documentos:
+        * PDF:     pdf-parse, pdf.js, pdfplumber (Python)
+        * DXF:     dxf-parser, ezdxf (Python), three-dxf
+        * XLSX:    SheetJS / openpyxl
+        * DOCX:    mammoth.js / python-docx
+        * OCR:     Tesseract.js / Tesseract OCR
+    - Base de datos:
+        * PostgreSQL para proyectos, ítems, normativa, catálogos.
+        * Vector store (pgvector / Pinecone / Weaviate) para RAG documental.
+    - RAG documental:
+        * Indexación de bases técnicas, especificaciones, RIC SEC, catálogos.
+        * Embeddings (Voyage, OpenAI, etc.) → búsqueda semántica.
+        * Respuestas con cita de fuente (trazabilidad).
+    - Integración IA (multi-agente):
+        * Claude API (Anthropic) — preferida para análisis técnico.
+        * OpenAI / Gemini como alternativas.
+    - Exportación: ExcelJS, jsPDF + html2canvas, docx (Node).
+
+  AGENTES IA PROPUESTOS (a orquestar en backend):
+    1. AgenteLectorPlanos      → extrae simbología, layers, cantidades.
+    2. AgenteCubicador         → consolida cantidades por partida con fuente.
+    3. AgenteNormativoRIC      → mapea exigencias RIC SEC, NCh, IEC, NFPA 70E.
+    4. AgentePresupuestador    → aplica precios, HH, factores, GG, utilidad.
+    5. AgenteEspecificaciones  → genera EETT por partida según mandante.
+    6. AgenteCatalogos         → sugiere marca/modelo y equivalentes.
+    7. AgenteRevisorCumplimiento → audita brechas vs bases técnicas.
+    8. AgenteAlternativas      → compara opciones (ventaja/desventaja/$/riesgo).
+    9. AgenteInformeFinal      → consolida entregable PDF/Word/Excel.
+
+  MODELO DE DATOS JSON DEL PROYECTO:
+    {
+      proyecto: { nombre, mandante, ubicacion, tipo, tension, potencia, ... },
+      config:   { moneda, ivaPct, tarifaHH, ggPct, utilidadPct, factorPerdida },
+      documentos: [ { id, nombre, tipo, tamañoKB, estado, metadatos, fuente } ],
+      cubicacion: [ { id, partida, sistema, area, descripcion, unidad, cantidad,
+                       factor, cantFinal, precioUnit, fuente, normativa, observ } ],
+      presupuesto: [ ... totales y HH por partida ],
+      especificaciones: [ { partida, contenido, normaRef, validado } ],
+      alternativas: [ { categoria, nombre, ventajas, desventajas, costoRel, riesgo } ],
+      conductores: [ { circuito, In, S_mm2, tipo, dV, ... } ],
+      canalizaciones: [ { tramo, tipo, diametro, ocupacionPct, ... } ],
+      catalogos: [ { material, marca, modelo, norma, link, equivalentes } ],
+      normativa: [ { requisito, ref, estado, evidencia, observacion } ],
+      riesgos:   [ { categoria, descripcion, prob, impacto, mitigacion } ]
+    }
+
+  REGLAS DE TRAZABILIDAD (implementadas):
+    - Cada cantidad tiene "fuente": plano | base técnica | planilla | estimado | manual.
+    - Cada normativa tiene estado: cumple | no cumple | requiere validación.
+    - Las advertencias se generan automáticamente cuando faltan antecedentes.
+    - El asistente IA NO inventa artículos RIC sin documento normativo cargado.
+==============================================================================
+-->
+
+<style>
+/* ===========================================================
+   TOKENS DE DISEÑO – ESTILO PROFESIONAL TÉCNICO (NAVY / GRIS)
+   =========================================================== */
+:root{
+  --c-primary:#0f2c4a;
+  --c-primary-light:#1e4d7b;
+  --c-primary-dark:#091a2e;
+  --c-accent:#ffa726;
+  --c-bg:#eef2f7;
+  --c-panel:#ffffff;
+  --c-panel-alt:#f8fafc;
+  --c-border:#d6dce5;
+  --c-border-strong:#b6c0cf;
+  --c-text:#1a2433;
+  --c-text-soft:#3a4759;
+  --c-muted:#6b7a8f;
+  --c-success:#2e7d32;
+  --c-warning:#ed6c02;
+  --c-danger:#c62828;
+  --c-info:#0277bd;
+  --c-table-head:#e8edf3;
+  --c-table-stripe:#f8fafc;
+  --c-table-hover:#eef3fa;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"SF Mono",Monaco,Consolas,"Liberation Mono",monospace;
+  --shadow-sm:0 1px 2px rgba(15,44,74,.06);
+  --shadow:0 2px 8px rgba(15,44,74,.08);
+  --radius:6px;
+  --radius-sm:4px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  font-family:var(--font);
+  background:var(--c-bg);
+  color:var(--c-text);
+  font-size:13.5px;
+  line-height:1.5;
+}
+
+/* ===========================================================
+   LAYOUT GENERAL
+   =========================================================== */
+.app{display:grid;grid-template-columns:240px 1fr;height:100vh;}
+.sidebar{
+  background:var(--c-primary-dark);
+  color:#dbe4f0;
+  display:flex;flex-direction:column;
+  border-right:1px solid #000;
+}
+.brand{
+  padding:14px 16px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;align-items:center;gap:10px;
+}
+.brand .logo{
+  width:34px;height:34px;border-radius:6px;
+  background:linear-gradient(135deg,var(--c-accent),#ff7043);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#0a1a2e;font-size:14px;
+}
+.brand h1{font-size:13px;margin:0;color:#fff;line-height:1.2;}
+.brand small{color:#8aa1bf;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;}
+
+.nav{flex:1;overflow-y:auto;padding:8px 0;}
+.nav .group-title{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;
+  color:#5d738c;padding:10px 16px 4px;
+}
+.nav button{
+  width:100%;text-align:left;background:none;border:none;color:#cbd6e6;
+  padding:9px 16px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;
+  border-left:3px solid transparent;
+}
+.nav button:hover{background:rgba(255,255,255,.04);color:#fff;}
+.nav button.active{
+  background:rgba(30,77,123,.55);color:#fff;
+  border-left-color:var(--c-accent);
+}
+.nav .ic{
+  display:inline-block;width:18px;height:18px;flex-shrink:0;
+  background:rgba(255,255,255,.08);border-radius:3px;
+  font-size:10px;line-height:18px;text-align:center;color:#8aa1bf;
+  font-family:var(--mono);
+}
+.sidebar-footer{
+  padding:10px 16px;border-top:1px solid rgba(255,255,255,.08);
+  font-size:10.5px;color:#7a8ca8;
+}
+
+/* ===========================================================
+   ÁREA PRINCIPAL
+   =========================================================== */
+main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{
+  background:var(--c-panel);
+  border-bottom:1px solid var(--c-border);
+  padding:10px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow-sm);
+}
+.topbar .crumbs{color:var(--c-muted);font-size:12px;}
+.topbar .crumbs b{color:var(--c-text);}
+.topbar .actions{display:flex;gap:8px;align-items:center;}
+.btn{
+  border:1px solid var(--c-border-strong);
+  background:var(--c-panel);
+  color:var(--c-text);
+  padding:6px 12px;font-size:12.5px;border-radius:var(--radius-sm);
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--font);
+}
+.btn:hover{background:var(--c-panel-alt);}
+.btn.primary{background:var(--c-primary);color:#fff;border-color:var(--c-primary);}
+.btn.primary:hover{background:var(--c-primary-light);}
+.btn.accent{background:var(--c-accent);color:#1a2433;border-color:#e69518;}
+.btn.danger{background:var(--c-danger);color:#fff;border-color:#a32020;}
+.btn.ghost{background:transparent;}
+.btn.sm{padding:3px 8px;font-size:11.5px;}
+
+.content{
+  flex:1;overflow-y:auto;padding:18px 22px;
+}
+
+/* ===========================================================
+   TIPOGRAFÍA SECCIONES
+   =========================================================== */
+.tab{display:none;}
+.tab.active{display:block;}
+h2.section-title{
+  font-size:18px;margin:0 0 4px;color:var(--c-primary);
+  display:flex;align-items:center;gap:10px;
+}
+.section-sub{color:var(--c-muted);margin-bottom:16px;font-size:13px;}
+
+/* ===========================================================
+   CARDS / PANELES
+   =========================================================== */
+.grid{display:grid;gap:14px;}
+.grid.cols-2{grid-template-columns:1fr 1fr;}
+.grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.grid.cols-4{grid-template-columns:repeat(4,1fr);}
+@media(max-width:1100px){.grid.cols-3,.grid.cols-4{grid-template-columns:1fr 1fr;}}
+
+.card{
+  background:var(--c-panel);
+  border:1px solid var(--c-border);
+  border-radius:var(--radius);
+  padding:14px 16px;
+  box-shadow:var(--shadow-sm);
+}
+.card h3{
+  font-size:13.5px;margin:0 0 10px;color:var(--c-primary);
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--c-border);padding-bottom:8px;
+}
+.card .kpi{font-size:22px;font-weight:600;color:var(--c-primary-dark);}
+.card .kpi-sub{color:var(--c-muted);font-size:11.5px;}
+
+/* ===========================================================
+   TABLAS
+   =========================================================== */
+.table-wrap{overflow:auto;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-panel);}
+table.data{
+  width:100%;border-collapse:collapse;font-size:12.5px;
+}
+table.data th{
+  background:var(--c-table-head);text-align:left;
+  padding:7px 9px;color:var(--c-text-soft);
+  font-weight:600;border-bottom:1px solid var(--c-border-strong);
+  position:sticky;top:0;z-index:1;font-size:11.5px;
+  text-transform:uppercase;letter-spacing:.03em;
+}
+table.data td{
+  padding:6px 9px;border-bottom:1px solid var(--c-border);
+  vertical-align:top;
+}
+table.data tr:nth-child(even) td{background:var(--c-table-stripe);}
+table.data tr:hover td{background:var(--c-table-hover);}
+table.data td.num{text-align:right;font-family:var(--mono);}
+table.data td input,table.data td select,table.data td textarea{
+  width:100%;border:1px solid transparent;background:transparent;
+  font:inherit;padding:2px 4px;color:inherit;
+}
+table.data td input:focus,table.data td select:focus,table.data td textarea:focus{
+  outline:none;border-color:var(--c-primary-light);background:#fff;
+}
+table.data td.num input{text-align:right;font-family:var(--mono);}
+table.data tfoot td{
+  background:#f1f5fb;font-weight:600;border-top:2px solid var(--c-primary-light);
+}
+
+/* ===========================================================
+   BADGES Y CHIPS
+   =========================================================== */
+.badge{
+  display:inline-block;padding:2px 7px;border-radius:10px;
+  font-size:10.5px;font-weight:600;letter-spacing:.02em;
+  text-transform:uppercase;
+}
+.badge.ok{background:#e1f3e3;color:var(--c-success);}
+.badge.warn{background:#fdecd2;color:var(--c-warning);}
+.badge.err{background:#fae2e2;color:var(--c-danger);}
+.badge.info{background:#dbeefb;color:var(--c-info);}
+.badge.muted{background:#e8ecf2;color:var(--c-muted);}
+.badge.src-plano{background:#dfe9f6;color:#1e4d7b;}
+.badge.src-base{background:#f1e4f6;color:#6a1b9a;}
+.badge.src-planilla{background:#fff0d4;color:#a76200;}
+.badge.src-est{background:#fbe7e2;color:#a14b32;}
+.badge.src-manual{background:#dde9d6;color:#3a6b1f;}
+
+/* ===========================================================
+   FORMULARIOS
+   =========================================================== */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;}
+.form-row.cols-3{grid-template-columns:repeat(3,1fr);}
+.form-row.cols-4{grid-template-columns:repeat(4,1fr);}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--c-muted);}
+label.field b{color:var(--c-text-soft);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;}
+label.field input,label.field select,label.field textarea{
+  border:1px solid var(--c-border-strong);
+  background:#fff;border-radius:var(--radius-sm);
+  padding:7px 9px;font:inherit;color:var(--c-text);
+}
+label.field input:focus,label.field select:focus,label.field textarea:focus{
+  outline:none;border-color:var(--c-primary-light);
+  box-shadow:0 0 0 2px rgba(30,77,123,.15);
+}
+
+/* ===========================================================
+   FILE DROP
+   =========================================================== */
+.dropzone{
+  border:2px dashed var(--c-border-strong);
+  background:var(--c-panel);
+  padding:24px;border-radius:var(--radius);
+  text-align:center;color:var(--c-muted);
+  cursor:pointer;transition:.15s;
+}
+.dropzone:hover,.dropzone.drag{
+  border-color:var(--c-primary-light);background:#eef3fa;color:var(--c-primary);
+}
+.dropzone b{color:var(--c-text);}
+
+/* ===========================================================
+   ALERTAS
+   =========================================================== */
+.alert{
+  border-left:4px solid;padding:10px 14px;border-radius:var(--radius-sm);
+  background:var(--c-panel-alt);font-size:12.5px;margin-bottom:10px;
+}
+.alert.info{border-color:var(--c-info);background:#eaf5fc;}
+.alert.warn{border-color:var(--c-warning);background:#fff5e6;}
+.alert.err{border-color:var(--c-danger);background:#fcebeb;}
+.alert.ok{border-color:var(--c-success);background:#ebf5ec;}
+.alert b{display:block;margin-bottom:2px;}
+
+/* ===========================================================
+   CHAT IA
+   =========================================================== */
+.chat{
+  display:grid;grid-template-rows:auto 1fr auto;
+  background:var(--c-panel);border:1px solid var(--c-border);
+  border-radius:var(--radius);height:calc(100vh - 170px);min-height:480px;
+}
+.chat .chat-head{
+  padding:10px 14px;border-bottom:1px solid var(--c-border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,#fff,#f3f6fa);
+}
+.chat .chat-head h3{margin:0;color:var(--c-primary);font-size:14px;}
+.chat .chat-head small{color:var(--c-muted);}
+.chat .chat-body{overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+.msg{max-width:78%;padding:9px 12px;border-radius:10px;font-size:13px;line-height:1.45;white-space:pre-wrap;}
+.msg.user{align-self:flex-end;background:var(--c-primary);color:#fff;border-bottom-right-radius:2px;}
+.msg.ai{align-self:flex-start;background:#eef3fa;color:var(--c-text);border-bottom-left-radius:2px;border:1px solid #dbe4f0;}
+.msg .meta{font-size:10.5px;color:var(--c-muted);margin-top:4px;display:block;}
+.msg.ai .meta{color:#6b7a8f;}
+.chat .chat-input{
+  display:flex;gap:8px;padding:10px;border-top:1px solid var(--c-border);background:#f7f9fc;
+}
+.chat .chat-input textarea{
+  flex:1;border:1px solid var(--c-border-strong);border-radius:var(--radius-sm);
+  padding:8px 10px;font:inherit;resize:none;min-height:42px;
+}
+.chat .suggest{
+  display:flex;flex-wrap:wrap;gap:6px;padding:6px 14px 0;
+}
+.chat .suggest button{
+  border:1px solid var(--c-border-strong);background:#fff;color:var(--c-text-soft);
+  padding:4px 9px;border-radius:14px;font-size:11px;cursor:pointer;
+}
+.chat .suggest button:hover{background:#eef3fa;border-color:var(--c-primary-light);color:var(--c-primary);}
+
+/* ===========================================================
+   MISC
+   =========================================================== */
+.row-actions{display:flex;gap:6px;}
+.toolbar{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  margin-bottom:10px;
+}
+.divider{height:1px;background:var(--c-border);margin:14px 0;}
+.note{font-size:11.5px;color:var(--c-muted);font-style:italic;}
+hr.soft{border:none;border-top:1px dashed var(--c-border-strong);margin:14px 0;}
+.copyable{font-family:var(--mono);font-size:11.5px;background:#f4f6f9;padding:2px 5px;border-radius:3px;}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
+.status-dot.ok{background:var(--c-success);}
+.status-dot.warn{background:var(--c-warning);}
+.status-dot.err{background:var(--c-danger);}
+.status-dot.info{background:var(--c-info);}
+
+.section-block{
+  background:var(--c-panel);border:1px solid var(--c-border);
+  border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;
+}
+.section-block h4{margin:0 0 8px;color:var(--c-primary);font-size:13.5px;}
+
+.tabsbar{display:flex;gap:2px;border-bottom:1px solid var(--c-border);margin-bottom:14px;}
+.tabsbar button{
+  background:none;border:none;padding:8px 14px;font:inherit;color:var(--c-muted);
+  cursor:pointer;border-bottom:2px solid transparent;
+}
+.tabsbar button.active{color:var(--c-primary);border-bottom-color:var(--c-primary);font-weight:600;}
+
+@keyframes typing { 0%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }
+.typing span{animation:typing 1s infinite;display:inline-block;}
+.typing span:nth-child(2){animation-delay:.2s;}
+.typing span:nth-child(3){animation-delay:.4s;}
+
+/* ===========================================================
+   MODAL NUEVO PROYECTO
+   =========================================================== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(15,26,46,.55);
+  display:none;align-items:center;justify-content:center;z-index:1000;
+  backdrop-filter:blur(2px);
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:var(--c-panel);border-radius:8px;
+  width:680px;max-width:92vw;max-height:88vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.35);
+  border:1px solid var(--c-border);
+}
+.modal-head{
+  padding:14px 18px;border-bottom:1px solid var(--c-border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(180deg,#fff,#f4f7fb);
+}
+.modal-head h3{margin:0;color:var(--c-primary);font-size:15px;}
+.modal-head .close{background:none;border:none;font-size:20px;color:var(--c-muted);cursor:pointer;}
+.modal-body{padding:18px;}
+.modal-foot{
+  padding:12px 18px;border-top:1px solid var(--c-border);
+  display:flex;justify-content:flex-end;gap:8px;background:#f7f9fc;
+}
+.tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.tipo-card{
+  border:2px solid var(--c-border);background:#fff;border-radius:6px;
+  padding:10px 12px;cursor:pointer;text-align:center;transition:.15s;
+}
+.tipo-card:hover{border-color:var(--c-primary-light);background:#eef3fa;}
+.tipo-card.selected{border-color:var(--c-primary);background:#eef3fa;box-shadow:0 0 0 2px rgba(30,77,123,.15);}
+.tipo-card .ico{font-size:24px;margin-bottom:4px;}
+.tipo-card .nom{font-weight:600;font-size:12.5px;color:var(--c-text);}
+.tipo-card .desc{font-size:10.5px;color:var(--c-muted);margin-top:2px;}
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- =====================================================
+       SIDEBAR
+       ===================================================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div>
+        <h1>AEP-Eléctrico</h1>
+        <small>RIC SEC · Chile</small>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="group-title">Proyecto</div>
+      <button class="active" data-tab="inicio"><span class="ic">1</span> Inicio</button>
+      <button data-tab="carga"><span class="ic">2</span> Carga de documentos</button>
+      <button data-tab="datos"><span class="ic">3</span> Datos del proyecto</button>
+      <button data-tab="analisis"><span class="ic">4</span> Análisis documental</button>
+
+      <div class="group-title">Ingeniería</div>
+      <button data-tab="cubicacion"><span class="ic">5</span> Cubicación</button>
+      <button data-tab="presupuesto"><span class="ic">6</span> Presupuesto</button>
+      <button data-tab="especificaciones"><span class="ic">7</span> Especificaciones</button>
+      <button data-tab="alternativas"><span class="ic">8</span> Alternativas</button>
+
+      <div class="group-title">Cálculos</div>
+      <button data-tab="conductores"><span class="ic">9</span> Conductores</button>
+      <button data-tab="canalizaciones"><span class="ic">10</span> Canalizaciones</button>
+
+      <div class="group-title">Cumplimiento</div>
+      <button data-tab="catalogos"><span class="ic">11</span> Catálogos</button>
+      <button data-tab="normativa"><span class="ic">12</span> Matriz normativa</button>
+      <button data-tab="riesgos"><span class="ic">13</span> Riesgos y observaciones</button>
+
+      <div class="group-title">IA y Salidas</div>
+      <button data-tab="chat"><span class="ic">14</span> Asistente IA</button>
+      <button data-tab="exportables"><span class="ic">15</span> Exportables</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      Prototipo v0.1 · Demo industrial<br>
+      © 2026 Ingeniería Eléctrica
+    </div>
+  </aside>
+
+  <!-- =====================================================
+       MAIN
+       ===================================================== -->
+  <main>
+    <div class="topbar">
+      <div class="crumbs">
+        <span id="crumbProyecto">Proyecto: <b>—</b></span> ·
+        <span id="crumbTab">Inicio</span> ·
+        <span id="badgeBackend"><span class="badge muted">● Comprobando backend...</span></span>
+      </div>
+      <div class="actions">
+        <button class="btn sm accent" id="btnNuevo">📄 Nuevo proyecto</button>
+        <button class="btn sm ghost" id="btnGuardar">💾 Guardar</button>
+        <button class="btn sm ghost" id="btnCargar">📂 Cargar JSON</button>
+        <button class="btn sm ghost" id="btnReset">🔄 Restaurar demo</button>
+        <button class="btn sm primary" id="btnIA">🤖 Asistente IA</button>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- =====================================================
+           SECCIÓN 1 · INICIO
+           ===================================================== -->
+      <section id="tab-inicio" class="tab active">
+        <h2 class="section-title">Resumen ejecutivo del proyecto</h2>
+        <p class="section-sub">Vista general del proyecto cargado. Los datos a continuación son demo de un proyecto industrial minero precargado para demostración.</p>
+
+        <div class="grid cols-4">
+          <div class="card">
+            <h3>Cubicación</h3>
+            <div class="kpi" id="kpiItems">—</div>
+            <div class="kpi-sub">ítems en planilla</div>
+          </div>
+          <div class="card">
+            <h3>Presupuesto total</h3>
+            <div class="kpi" id="kpiTotal">—</div>
+            <div class="kpi-sub">CLP con IVA</div>
+          </div>
+          <div class="card">
+            <h3>Documentos</h3>
+            <div class="kpi" id="kpiDocs">—</div>
+            <div class="kpi-sub">antecedentes cargados</div>
+          </div>
+          <div class="card">
+            <h3>Brechas normativas</h3>
+            <div class="kpi" id="kpiBrechas">—</div>
+            <div class="kpi-sub">requieren validación</div>
+          </div>
+        </div>
+
+        <div class="grid cols-2" style="margin-top:14px;">
+          <div class="card">
+            <h3>Datos generales</h3>
+            <table class="data"><tbody id="resumenDatos"></tbody></table>
+          </div>
+          <div class="card">
+            <h3>Estado de cumplimiento</h3>
+            <table class="data"><tbody id="resumenCumpl"></tbody></table>
+          </div>
+        </div>
+
+        <div class="alert info" style="margin-top:14px;">
+          <b>Trazabilidad activa</b>
+          Toda cantidad cubicada está marcada con su fuente (plano, base técnica, planilla, estimación o manual). El asistente IA NO inventa artículos RIC sin documento normativo cargado. Las advertencias de brechas se generan automáticamente.
+        </div>
+
+        <div class="card" style="margin-top:14px;border:2px solid var(--c-accent);">
+          <h3>☁️ Backend de procesamiento profesional</h3>
+          <p style="margin:8px 0;font-size:13px;color:var(--c-text-soft);">
+            Para activar procesamiento real de PDF/DXF/XLSX, agente cubicador IA con Claude API, RAG documental y exportables profesionales, levanta el backend FastAPI incluido en este repositorio.
+          </p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn primary" onclick="App.sincronizarConBackend()">☁️ Sincronizar proyecto con backend</button>
+            <button class="btn" onclick="App.testConexionBackend()">🔌 Test conexión</button>
+            <span class="copyable">docker-compose up</span>
+            <span class="note">Ver README.md para instalación completa.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 2 · CARGA DE DOCUMENTOS
+           ===================================================== -->
+      <section id="tab-carga" class="tab">
+        <h2 class="section-title">Carga de documentos del proyecto</h2>
+        <p class="section-sub">Carga planos PDF/DXF, planillas Excel, bases técnicas, memorias, catálogos y fichas. El parser real corre en backend (ver bloque de comentarios en código fuente para librerías sugeridas).</p>
+
+        <div class="dropzone" id="dropzone">
+          <div style="font-size:30px;line-height:1;">📁</div>
+          <p><b>Arrastra archivos aquí</b> o haz clic para seleccionar</p>
+          <small>Formatos: PDF · DXF · XLSX · CSV · DOCX · TXT · JPG · PNG</small>
+          <input id="fileInput" type="file" multiple style="display:none;" accept=".pdf,.dxf,.xlsx,.csv,.docx,.txt,.jpg,.jpeg,.png" />
+        </div>
+
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn sm" id="btnAddDocoDemo">+ Agregar documento demo</button>
+          <span class="note">Los documentos se almacenan en memoria/LocalStorage. El procesamiento real (PDF/DXF/XLSX) requiere backend.</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tablaDocs">
+            <thead>
+              <tr>
+                <th>#</th><th>Nombre</th><th>Tipo</th><th>Tamaño</th>
+                <th>Estado</th><th>Información detectada</th><th>Observaciones</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 3 · DATOS DEL PROYECTO
+           ===================================================== -->
+      <section id="tab-datos" class="tab">
+        <h2 class="section-title">Datos del proyecto</h2>
+        <p class="section-sub">Campos editables. Estos datos alimentan los demás módulos (cubicación, cálculos, especificaciones, presupuesto).</p>
+
+        <div class="section-block">
+          <h4>Identificación</h4>
+          <div class="form-row cols-3">
+            <label class="field"><b>Nombre del proyecto</b><input data-bind="proyecto.nombre"></label>
+            <label class="field"><b>Mandante</b><input data-bind="proyecto.mandante"></label>
+            <label class="field"><b>Ubicación</b><input data-bind="proyecto.ubicacion"></label>
+          </div>
+          <div class="form-row cols-3">
+            <label class="field"><b>Tipo de instalación</b>
+              <select data-bind="proyecto.tipo">
+                <option>Vivienda</option><option>Edificio</option><option>Comercio</option>
+                <option>Industria</option><option>Minería</option><option>Planta de proceso</option>
+                <option>Sala eléctrica</option><option>Alimentador</option><option>Iluminación</option>
+                <option>Puesta a tierra</option><option>Otro</option>
+              </select>
+            </label>
+            <label class="field"><b>Disciplina principal</b><input data-bind="proyecto.disciplina"></label>
+            <label class="field"><b>Fecha base</b><input type="date" data-bind="proyecto.fecha"></label>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <h4>Parámetros eléctricos</h4>
+          <div class="form-row cols-4">
+            <label class="field"><b>Tensión nominal (V)</b><input type="number" data-bind="proyecto.tension"></label>
+            <label class="field"><b>Frecuencia (Hz)</b><input type="number" data-bind="proyecto.freq"></label>
+            <label class="field"><b>Potencia instalada (kW)</b><input type="number" data-bind="proyecto.potencia"></label>
+            <label class="field"><b>Corriente estimada (A)</b><input type="number" data-bind="proyecto.corriente"></label>
+          </div>
+          <div class="form-row cols-4">
+            <label class="field"><b>Tipo de carga</b>
+              <select data-bind="proyecto.carga">
+                <option>Resistiva</option><option>Inductiva</option><option>Mixta</option><option>Variadores/Electrónica</option>
+              </select>
+            </label>
+            <label class="field"><b>Ambiente</b>
+              <select data-bind="proyecto.ambiente">
+                <option>Interior seco</option><option>Interior húmedo</option><option>Exterior protegido</option>
+                <option>Exterior intemperie</option><option>Industrial / polvo</option><option>Corrosivo</option>
+                <option>Subterráneo</option><option>Atmósfera explosiva (Ex)</option>
+              </select>
+            </label>
+            <label class="field"><b>Temperatura amb. (°C)</b><input type="number" data-bind="proyecto.tempAmb"></label>
+            <label class="field"><b>Método instalación</b>
+              <select data-bind="proyecto.metodo">
+                <option>Bandeja perforada</option><option>Bandeja sólida</option><option>Escalerilla</option>
+                <option>EMT a la vista</option><option>EMT embutida</option><option>PVC embutido</option>
+                <option>Ducto subterráneo</option><option>Directa enterrada</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <h4>Configuración económica</h4>
+          <div class="form-row cols-4">
+            <label class="field"><b>Moneda</b>
+              <select data-bind="config.moneda"><option>CLP</option><option>UF</option><option>USD</option></select>
+            </label>
+            <label class="field"><b>IVA (%)</b><input type="number" data-bind="config.ivaPct"></label>
+            <label class="field"><b>Tarifa HH (CLP)</b><input type="number" data-bind="config.tarifaHH"></label>
+            <label class="field"><b>Factor de pérdida (%)</b><input type="number" data-bind="config.factorPerdida"></label>
+          </div>
+          <div class="form-row cols-4">
+            <label class="field"><b>Gastos generales (%)</b><input type="number" data-bind="config.ggPct"></label>
+            <label class="field"><b>Utilidad (%)</b><input type="number" data-bind="config.utilidadPct"></label>
+            <label class="field"><b>Factor altura</b><input type="number" step="0.01" data-bind="config.factorAltura"></label>
+            <label class="field"><b>Factor dificultad</b><input type="number" step="0.01" data-bind="config.factorDific"></label>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <h4>Restricciones y normas internas del cliente</h4>
+          <div class="form-row">
+            <label class="field"><b>Marcas/estándares permitidos</b><input data-bind="proyecto.marcas"></label>
+            <label class="field"><b>Restricciones del cliente</b><input data-bind="proyecto.restricciones"></label>
+          </div>
+          <label class="field"><b>Normativa aplicable (separar por coma)</b>
+            <input data-bind="proyecto.normas">
+          </label>
+        </div>
+
+        <button class="btn primary" onclick="App.refreshAll()">Aplicar cambios y recalcular</button>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 4 · ANÁLISIS DOCUMENTAL
+           ===================================================== -->
+      <section id="tab-analisis" class="tab">
+        <h2 class="section-title">Análisis documental</h2>
+        <p class="section-sub">Resumen de información extraída por documento. La extracción automática real (PDF/DXF/XLSX) se ejecuta en backend; aquí se muestra estructura simulada con datos demo.</p>
+
+        <div class="alert warn">
+          <b>Nota técnica</b>
+          La lectura automática de simbología, layers DXF y tablas Excel requiere backend con librerías: <span class="copyable">pdf-parse</span>, <span class="copyable">pdfplumber</span>, <span class="copyable">dxf-parser</span>, <span class="copyable">ezdxf</span>, <span class="copyable">SheetJS</span>, <span class="copyable">mammoth.js</span>, <span class="copyable">Tesseract OCR</span>.
+        </div>
+
+        <div id="analisisDocs"></div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 5 · CUBICACIÓN
+           ===================================================== -->
+      <section id="tab-cubicacion" class="tab">
+        <h2 class="section-title">Cubicación de materiales</h2>
+        <p class="section-sub">Cada ítem indica fuente (plano / base técnica / planilla / estimado / manual) y nivel de confianza. Editable en línea.</p>
+
+        <div class="toolbar">
+          <button class="btn sm primary" onclick="App.addCubicacionRow()">+ Agregar ítem</button>
+          <button class="btn sm accent" onclick="App.ejecutarAgenteCubicador()">🤖 Generar con IA</button>
+          <button class="btn sm" onclick="App.recalcCubicacion()">↻ Recalcular</button>
+          <select id="filtroPartida" onchange="App.renderCubicacion()">
+            <option value="">— Todas las partidas —</option>
+          </select>
+          <span class="note">Cantidad final = cantidad × (1 + factor pérdida / 100)</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tablaCubicacion">
+            <thead>
+              <tr>
+                <th>#</th><th>Partida</th><th>Sistema</th><th>Área</th>
+                <th>Descripción</th><th>Unidad</th>
+                <th class="num">Cant.</th><th class="num">% Pérd.</th><th class="num">Cant. final</th>
+                <th class="num">PU (CLP)</th><th class="num">Total</th>
+                <th>Fuente</th><th>Confianza</th><th>Norma</th><th>Obs.</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="10" style="text-align:right;">TOTAL MATERIALES</td>
+                <td class="num" id="totalCubMat">—</td>
+                <td colspan="5"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 6 · PRESUPUESTO
+           ===================================================== -->
+      <section id="tab-presupuesto" class="tab">
+        <h2 class="section-title">Presupuesto</h2>
+        <p class="section-sub">Calculado automáticamente a partir de la cubicación. Aplica HH, equipos, GG, utilidad e IVA.</p>
+
+        <div class="toolbar">
+          <button class="btn sm" onclick="App.recalcPresupuesto()">↻ Recalcular</button>
+          <span class="note">Editable: HH unitarias por ítem. PU y cantidades se toman de la cubicación.</span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tablaPresupuesto">
+            <thead>
+              <tr>
+                <th>#</th><th>Partida</th><th>Descripción</th>
+                <th>Unid.</th><th class="num">Cant.</th><th class="num">PU mat.</th><th class="num">Total mat.</th>
+                <th class="num">HH/un</th><th class="num">HH tot.</th><th class="num">$ MO</th>
+                <th class="num">Total ítem</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="grid cols-2" style="margin-top:14px;">
+          <div class="card">
+            <h3>Resumen económico</h3>
+            <table class="data"><tbody id="resumenEcon"></tbody></table>
+          </div>
+          <div class="card">
+            <h3>Comparativo entre alternativas</h3>
+            <table class="data" id="tablaCompAlt">
+              <thead><tr><th>Alternativa</th><th class="num">Materiales</th><th class="num">M.O.</th><th class="num">Total neto</th><th>Tiempo</th><th>Riesgo</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 7 · ESPECIFICACIONES TÉCNICAS
+           ===================================================== -->
+      <section id="tab-especificaciones" class="tab">
+        <h2 class="section-title">Especificaciones técnicas eléctricas</h2>
+        <p class="section-sub">Texto editable por partida. Cada especificación incluye descripción, norma, requisitos, materialidad, IP, condiciones, ensayos y documentación.</p>
+
+        <div class="toolbar">
+          <select id="selEspec"></select>
+          <button class="btn sm" onclick="App.addEspec()">+ Nueva especificación</button>
+          <button class="btn sm" onclick="App.generarEspecIA()">🤖 Generar con IA</button>
+        </div>
+
+        <div id="contEspec"></div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 8 · ALTERNATIVAS DE DISEÑO
+           ===================================================== -->
+      <section id="tab-alternativas" class="tab">
+        <h2 class="section-title">Alternativas de diseño</h2>
+        <p class="section-sub">Comparación técnica y económica entre alternativas (canalización, conductores, soportación, materialidad).</p>
+
+        <div class="tabsbar" id="tabsbarAlt"></div>
+        <div id="contAlt"></div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 9 · CONDUCTORES
+           ===================================================== -->
+      <section id="tab-conductores" class="tab">
+        <h2 class="section-title">Cálculo y selección de conductores</h2>
+        <p class="section-sub">Ingrese parámetros del circuito y la herramienta entrega corriente corregida, caída de tensión y sección sugerida.</p>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Parámetros del circuito</h3>
+            <div class="form-row">
+              <label class="field"><b>Circuito</b><input id="cond_nom" value="Alimentador MCC-01"></label>
+              <label class="field"><b>Tipo de sistema</b>
+                <select id="cond_sys"><option>Trifásico</option><option>Monofásico</option></select>
+              </label>
+            </div>
+            <div class="form-row cols-3">
+              <label class="field"><b>Tensión (V)</b><input id="cond_U" type="number" value="400"></label>
+              <label class="field"><b>Potencia (kW)</b><input id="cond_P" type="number" value="120"></label>
+              <label class="field"><b>Cos φ</b><input id="cond_fp" type="number" step="0.01" value="0.85"></label>
+            </div>
+            <div class="form-row cols-3">
+              <label class="field"><b>Longitud (m)</b><input id="cond_L" type="number" value="65"></label>
+              <label class="field"><b>Temp. ambiente (°C)</b><input id="cond_T" type="number" value="35"></label>
+              <label class="field"><b>N° circ. agrupados</b><input id="cond_G" type="number" value="3"></label>
+            </div>
+            <div class="form-row cols-3">
+              <label class="field"><b>Tipo aislación</b>
+                <select id="cond_iso"><option value="90">XLPE/EPR (90°C)</option><option value="75">PVC 75°C</option><option value="70">PVC 70°C</option></select>
+              </label>
+              <label class="field"><b>Material</b>
+                <select id="cond_mat"><option>Cobre</option><option>Aluminio</option></select>
+              </label>
+              <label class="field"><b>ΔV máx admisible (%)</b><input id="cond_dv" type="number" step="0.1" value="3"></label>
+            </div>
+            <button class="btn primary" onclick="App.calcularConductor()">Calcular</button>
+          </div>
+
+          <div class="card">
+            <h3>Resultado</h3>
+            <table class="data"><tbody id="resCond"></tbody></table>
+            <div class="alert info" style="margin-top:10px;">
+              <b>Importante</b>
+              Las capacidades de corriente usadas son referenciales tipo IEC/RIC. <u>Antes de licitar, validar contra la tabla vigente del RIC SEC para el método de instalación específico</u> y aplicar factores de la norma actualizada.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 10 · CANALIZACIONES
+           ===================================================== -->
+      <section id="tab-canalizaciones" class="tab">
+        <h2 class="section-title">Cálculo de ocupación de canalización</h2>
+        <p class="section-sub">Verifica ocupación porcentual de ducto según número de conductores. Norma de referencia: criterio RIC / NEC ≤ 40% para ≥3 conductores.</p>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Conductores en el ducto</h3>
+            <div class="toolbar">
+              <button class="btn sm" onclick="App.addCanRow()">+ Agregar conductor</button>
+            </div>
+            <table class="data" id="tablaCan">
+              <thead><tr><th>#</th><th>Sección mm²</th><th>Tipo</th><th class="num">D ext (mm)</th><th class="num">N°</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>Ducto y resultado</h3>
+            <div class="form-row">
+              <label class="field"><b>Tipo de ducto</b>
+                <select id="can_tipo">
+                  <option value="EMT_20">EMT 20 mm (Ø int ≈ 18.2)</option>
+                  <option value="EMT_25">EMT 25 mm (Ø int ≈ 23.4)</option>
+                  <option value="EMT_32">EMT 32 mm (Ø int ≈ 30.1)</option>
+                  <option value="EMT_40">EMT 40 mm (Ø int ≈ 38.7)</option>
+                  <option value="EMT_50">EMT 50 mm (Ø int ≈ 50.4)</option>
+                  <option value="PVC_20">PVC rígido 20 mm</option>
+                  <option value="PVC_25">PVC rígido 25 mm</option>
+                  <option value="PVC_32">PVC rígido 32 mm</option>
+                  <option value="PVC_40">PVC rígido 40 mm</option>
+                  <option value="PVC_50">PVC rígido 50 mm</option>
+                </select>
+              </label>
+              <label class="field"><b>Ocupación máx (%)</b><input id="can_max" type="number" value="40"></label>
+            </div>
+            <button class="btn primary" onclick="App.calcularCanalizacion()">Calcular ocupación</button>
+            <table class="data" style="margin-top:10px;"><tbody id="resCan"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 11 · CATÁLOGOS
+           ===================================================== -->
+      <section id="tab-catalogos" class="tab">
+        <h2 class="section-title">Matriz de catálogos sugeridos</h2>
+        <p class="section-sub">Marcas y modelos de referencia para mercado chileno. Validar contra certificación SEC vigente y disponibilidad real con proveedores.</p>
+
+        <div class="toolbar">
+          <button class="btn sm primary" onclick="App.addCatalogo()">+ Agregar material</button>
+          <input id="searchCat" placeholder="Buscar..." style="padding:5px 9px;border:1px solid var(--c-border-strong);border-radius:4px;" oninput="App.renderCatalogos()">
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tablaCat">
+            <thead><tr>
+              <th>#</th><th>Material</th><th>Marca</th><th>Modelo</th>
+              <th>Características</th><th>Norma</th><th>Catálogo / link</th>
+              <th>Equivalentes</th><th>Estado</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 12 · MATRIZ NORMATIVA
+           ===================================================== -->
+      <section id="tab-normativa" class="tab">
+        <h2 class="section-title">Matriz de cumplimiento normativo</h2>
+        <p class="section-sub">Listado de requisitos verificados contra la base técnica y el diseño propuesto. <b>Las referencias a RIC SEC son genéricas hasta no validar contra el documento normativo vigente cargado al proyecto.</b></p>
+
+        <div class="toolbar">
+          <button class="btn sm primary" onclick="App.addNorma()">+ Agregar requisito</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tablaNorma">
+            <thead><tr>
+              <th>#</th><th>Requisito</th><th>Norma / referencia</th>
+              <th>Estado</th><th>Evidencia</th><th>Observación</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 13 · RIESGOS Y OBSERVACIONES
+           ===================================================== -->
+      <section id="tab-riesgos" class="tab">
+        <h2 class="section-title">Matriz de riesgos, brechas y observaciones</h2>
+        <p class="section-sub">Hallazgos detectados durante el análisis. Categorías: técnico, normativo, constructivo, comercial, seguridad, plazo.</p>
+
+        <div class="toolbar">
+          <button class="btn sm primary" onclick="App.addRiesgo()">+ Agregar hallazgo</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tablaRiesgo">
+            <thead><tr>
+              <th>#</th><th>Categoría</th><th>Descripción</th>
+              <th>Probabilidad</th><th>Impacto</th><th>Nivel</th>
+              <th>Mitigación</th><th>Responsable</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 14 · CHAT IA
+           ===================================================== -->
+      <section id="tab-chat" class="tab">
+        <h2 class="section-title">Asistente Técnico Eléctrico IA</h2>
+        <p class="section-sub">Consulta especializada en normativa RIC SEC Chile, selección de conductores, canalizaciones, presupuesto, alternativas y revisión de bases técnicas.</p>
+
+        <div class="alert info">
+          <b>Estado</b>
+          Modo DEMO (offline). Para activar Claude API, edita <span class="copyable">AI_CONFIG</span> al final del archivo y carga tu API key desde una variable de entorno o un backend seguro. <u>No publiques claves API en el HTML</u>.
+        </div>
+
+        <div class="chat">
+          <div class="chat-head">
+            <div>
+              <h3>🤖 Asistente Técnico Eléctrico IA</h3>
+              <small>Especialista en RIC SEC · NCh · IEC · NFPA 70E (ref.)</small>
+            </div>
+            <div>
+              <select id="aiProvider" style="padding:4px 8px;font-size:11.5px;border:1px solid var(--c-border-strong);border-radius:4px;">
+                <option value="demo">Modo Demo (offline)</option>
+                <option value="claude">Claude API (configurar)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="chat-body" id="chatBody"></div>
+
+          <div class="suggest">
+            <button onclick="App.suggestChat('¿Qué normativa RIC SEC aplica a canalizaciones EMT en ambientes industriales?')">Normativa EMT industrial</button>
+            <button onclick="App.suggestChat('Calcula la sección mínima para 120 kW a 400V trifásico, 65 m, 3 circuitos agrupados.')">Selección conductor</button>
+            <button onclick="App.suggestChat('Compara bandeja galvanizada vs escalerilla para 30 conductores XLPE.')">Comparar canalización</button>
+            <button onclick="App.suggestChat('Genera especificación técnica para tablero TGM 600x800x300 con protecciones.')">EETT tablero</button>
+            <button onclick="App.suggestChat('Lista accesorios y misceláneos para 200 m de bandeja portaconductores 300 mm.')">Accesorios bandeja</button>
+            <button onclick="App.suggestChat('¿Qué ensayos y protocolos pide RIC SEC para puesta a tierra de planta industrial?')">PAT industrial</button>
+          </div>
+
+          <div class="chat-input">
+            <textarea id="chatInput" placeholder="Escribe tu consulta técnica..."></textarea>
+            <button class="btn primary" onclick="App.sendChat()">Enviar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =====================================================
+           SECCIÓN 15 · EXPORTABLES
+           ===================================================== -->
+      <section id="tab-exportables" class="tab">
+        <h2 class="section-title">Exportables</h2>
+        <p class="section-sub">Generación de entregables. La exportación real a XLSX/PDF/DOCX corre con librerías cliente (SheetJS, jsPDF, docx) o backend. Esta vista incluye exportación JSON funcional + CSV + impresión.</p>
+
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>📊 Cubicación</h3>
+            <p class="note">Tabla completa de cubicación con fuente y trazabilidad.</p>
+            <div class="row-actions">
+              <button class="btn sm primary" onclick="App.exportCSV('cubicacion')">CSV</button>
+              <button class="btn sm" onclick="App.exportTabla('tablaCubicacion','Cubicación')">Imprimir</button>
+              <button class="btn sm ghost" disabled title="Requiere SheetJS — ver código">XLSX</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>💰 Presupuesto</h3>
+            <p class="note">Presupuesto con HH, GG, utilidad e IVA.</p>
+            <div class="row-actions">
+              <button class="btn sm primary" onclick="App.exportCSV('presupuesto')">CSV</button>
+              <button class="btn sm" onclick="App.exportTabla('tablaPresupuesto','Presupuesto')">Imprimir</button>
+              <button class="btn sm ghost" disabled>XLSX</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>📄 Especificaciones</h3>
+            <p class="note">Texto técnico por partida.</p>
+            <div class="row-actions">
+              <button class="btn sm primary" onclick="App.exportEspecMD()">Markdown</button>
+              <button class="btn sm" onclick="App.exportEspecPrint()">Imprimir / PDF</button>
+              <button class="btn sm ghost" disabled>DOCX</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>📑 Matriz normativa</h3>
+            <p class="note">Estado de cumplimiento por requisito.</p>
+            <div class="row-actions">
+              <button class="btn sm primary" onclick="App.exportCSV('normativa')">CSV</button>
+              <button class="btn sm" onclick="App.exportTabla('tablaNorma','Matriz normativa')">Imprimir</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>📚 Catálogos</h3>
+            <p class="note">Marcas, modelos y equivalentes sugeridos.</p>
+            <div class="row-actions">
+              <button class="btn sm primary" onclick="App.exportCSV('catalogos')">CSV</button>
+              <button class="btn sm" onclick="App.exportTabla('tablaCat','Catálogos')">Imprimir</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>🗂 Proyecto completo</h3>
+            <p class="note">Exporta el estado completo del proyecto en JSON.</p>
+            <div class="row-actions">
+              <button class="btn sm accent" onclick="App.exportJSON()">JSON</button>
+              <button class="btn sm" onclick="App.importJSON()">Importar JSON</button>
+            </div>
+          </div>
+
+          <div class="card" style="border:2px solid var(--c-accent);">
+            <h3>☁️ Backend (exportables reales)</h3>
+            <p class="note">XLSX con formato profesional, PDF con reportlab, DOCX con python-docx.</p>
+            <div class="row-actions">
+              <button class="btn sm primary" onclick="App.exportarBackend('xlsx')">XLSX</button>
+              <button class="btn sm primary" onclick="App.exportarBackend('pdf')">PDF</button>
+              <button class="btn sm primary" onclick="App.exportarBackend('docx')">DOCX</button>
+            </div>
+            <p class="note" style="margin-top:8px;">Requiere backend conectado y proyecto sincronizado.</p>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="alert ok">
+          <b>Plan de evolución sugerido</b>
+          (1) Backend Node/Python para procesamiento real PDF/DXF/XLSX. (2) DB PostgreSQL + pgvector para RAG documental. (3) Conexión a Claude API con prompt de sistema especializado RIC SEC. (4) Orquestador multi-agente (lector de planos, cubicador, normativo, presupuestador, etc). (5) Exportación a XLSX/PDF/DOCX con ExcelJS / jsPDF / docx. (6) Integración con bases de precios de mercado y certificación SEC.
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- =====================================================
+     MODAL · NUEVO PROYECTO
+     ===================================================== -->
+<div class="modal-overlay" id="modalNuevo">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>📄 Crear nuevo proyecto</h3>
+      <button class="close" onclick="App.cerrarModalNuevo()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin:0 0 12px;color:var(--c-muted);font-size:12.5px;">
+        Comienza un proyecto desde cero. Se conservarán las plantillas de especificaciones y la lista de catálogos sugeridos (puedes editarlos o eliminarlos), pero la cubicación, presupuesto, documentos, normativa y riesgos quedarán <b>vacíos</b>.
+      </p>
+
+      <label class="field" style="margin-bottom:10px;">
+        <b>Selecciona el tipo de proyecto</b>
+      </label>
+
+      <div class="tipo-grid" id="tipoGrid">
+        <div class="tipo-card" data-tipo="Vivienda"><div class="ico">🏠</div><div class="nom">Vivienda</div><div class="desc">Residencial unifamiliar</div></div>
+        <div class="tipo-card" data-tipo="Edificio"><div class="ico">🏢</div><div class="nom">Edificio</div><div class="desc">Multifamiliar / oficinas</div></div>
+        <div class="tipo-card" data-tipo="Comercio"><div class="ico">🏬</div><div class="nom">Comercio</div><div class="desc">Local / retail</div></div>
+        <div class="tipo-card" data-tipo="Industria"><div class="ico">🏭</div><div class="nom">Industria</div><div class="desc">Planta industrial</div></div>
+        <div class="tipo-card" data-tipo="Minería"><div class="ico">⛏️</div><div class="nom">Minería</div><div class="desc">Faena minera</div></div>
+        <div class="tipo-card" data-tipo="Planta de proceso"><div class="ico">⚗️</div><div class="nom">Planta de proceso</div><div class="desc">Química / alimentos</div></div>
+        <div class="tipo-card" data-tipo="Sala eléctrica"><div class="ico">⚡</div><div class="nom">Sala eléctrica</div><div class="desc">MCC / CCM / subestación BT</div></div>
+        <div class="tipo-card" data-tipo="Alimentador"><div class="ico">🔌</div><div class="nom">Alimentador</div><div class="desc">Alimentadores específicos</div></div>
+        <div class="tipo-card" data-tipo="Iluminación"><div class="ico">💡</div><div class="nom">Iluminación</div><div class="desc">Alumbrado interior/exterior</div></div>
+        <div class="tipo-card" data-tipo="Puesta a tierra"><div class="ico">🌐</div><div class="nom">Puesta a tierra</div><div class="desc">Mallas / electrodos</div></div>
+        <div class="tipo-card" data-tipo="Otro"><div class="ico">📌</div><div class="nom">Otro</div><div class="desc">Tipo personalizado</div></div>
+      </div>
+
+      <div class="form-row cols-3">
+        <label class="field"><b>Nombre del proyecto</b><input id="np_nombre" placeholder="Ej: Sala eléctrica edificio corporativo"></label>
+        <label class="field"><b>Mandante</b><input id="np_mandante" placeholder="Cliente"></label>
+        <label class="field"><b>Ubicación</b><input id="np_ubicacion" placeholder="Comuna, Región"></label>
+      </div>
+      <div class="form-row cols-3">
+        <label class="field"><b>Tensión (V)</b><input id="np_tension" type="number" value="400"></label>
+        <label class="field"><b>Potencia (kW)</b><input id="np_potencia" type="number" placeholder="0"></label>
+        <label class="field"><b>Ambiente</b>
+          <select id="np_ambiente">
+            <option>Interior seco</option><option>Interior húmedo</option>
+            <option>Exterior protegido</option><option>Exterior intemperie</option>
+            <option>Industrial / polvo</option><option>Corrosivo</option>
+            <option>Subterráneo</option><option>Atmósfera explosiva (Ex)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="alert info" style="margin-top:8px;">
+        <b>Sugerencia</b>
+        Una vez creado el proyecto, ve a la pestaña <b>Carga de documentos</b> para subir planos, bases técnicas, planillas y catálogos del nuevo encargo. Luego completa <b>Datos del proyecto</b> y comienza la cubicación.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="App.cerrarModalNuevo()">Cancelar</button>
+      <button class="btn primary" onclick="App.crearProyecto()">Crear proyecto vacío</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================
+   CAPA API — Conexión al backend FastAPI
+   ===========================================================
+   El frontend funciona en 2 modos:
+     - "backend"   → llama a http://localhost:8000 (procesamiento real)
+     - "demo"      → todo local con datos demo (fallback)
+
+   En el primer arranque hace ping a /api/health para detectar
+   el modo. Se puede forzar editando localStorage.aep_backend_url.
+   =========================================================== */
+const API = {
+  baseUrl: localStorage.getItem("aep_backend_url") || "http://localhost:8000",
+  mode: "demo",        // se actualiza tras ping
+  proyectoId: null,    // ID del proyecto activo en backend (cuando aplica)
+
+  async ping() {
+    try {
+      const r = await fetch(`${this.baseUrl}/api/health`, {method:"GET"});
+      if(!r.ok) throw new Error("status "+r.status);
+      const j = await r.json();
+      this.mode = "backend";
+      return j;
+    } catch(e) {
+      this.mode = "demo";
+      return null;
+    }
+  },
+
+  async _req(method, path, body, opts={}) {
+    const url = `${this.baseUrl}${path}`;
+    const init = {method, headers:{}};
+    if(body instanceof FormData) {
+      init.body = body;
+    } else if(body !== undefined) {
+      init.headers["Content-Type"] = "application/json";
+      init.body = JSON.stringify(body);
+    }
+    if(opts.raw) {
+      const r = await fetch(url, init);
+      if(!r.ok) throw new Error(`${method} ${path} → ${r.status}`);
+      return r;
+    }
+    const r = await fetch(url, init);
+    if(!r.ok) {
+      const t = await r.text();
+      throw new Error(`${method} ${path} → ${r.status}: ${t.slice(0,200)}`);
+    }
+    if(r.status === 204) return null;
+    return await r.json();
+  },
+
+  // Proyectos
+  crearProyecto(data){ return this._req("POST","/api/projects", data); },
+  listarProyectos(){ return this._req("GET","/api/projects"); },
+  obtenerProyecto(id){ return this._req("GET",`/api/projects/${id}`); },
+  actualizarProyecto(id,data){ return this._req("PUT",`/api/projects/${id}`, data); },
+
+  // Documentos
+  async subirDocumento(proyectoId, file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    return this._req("POST", `/api/projects/${proyectoId}/documents`, fd);
+  },
+  listarDocumentos(proyectoId){ return this._req("GET",`/api/projects/${proyectoId}/documents`); },
+  obtenerDocumento(id){ return this._req("GET",`/api/documents/${id}`); },
+  reprocesar(id){ return this._req("POST",`/api/documents/${id}/process`); },
+
+  // Cubicación
+  listarCubicacion(pid){ return this._req("GET",`/api/projects/${pid}/cubicacion`); },
+  agenteCubicador(pid){ return this._req("POST",`/api/projects/${pid}/cubicacion/agent`); },
+
+  // Chat
+  enviarChat(pid, msg, agent="general"){
+    return this._req("POST", `/api/projects/${pid}/chat`, {
+      proyecto_id: pid, message: msg, use_rag: true, agent
+    });
+  },
+
+  // Exportables
+  async exportar(pid, formato){
+    const r = await this._req("POST", `/api/projects/${pid}/export/${formato}`, undefined, {raw:true});
+    const blob = await r.blob();
+    const cd = r.headers.get("content-disposition") || "";
+    const m = cd.match(/filename="?([^";]+)"?/);
+    const filename = m ? m[1] : `export_${pid}.${formato}`;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  },
+};
+
+/* ===========================================================
+   ESTADO DE LA APLICACIÓN
+   =========================================================== */
+const App = {};
+
+/* ===========================================================
+   CONFIGURACIÓN IA — CLAUDE API
+   -----------------------------------------------------------
+   ⚠️  SEGURIDAD: NUNCA pongas tu API key en el HTML público.
+   La forma correcta es:
+     - En desarrollo: usar una variable de entorno en un backend
+       (Node.js / Express o Python / FastAPI) que sirva de proxy
+       y agregue el header "x-api-key" desde process.env.
+     - En producción: nunca exponer la clave al cliente.
+
+   Para una prueba local rápida puedes setear AI_CONFIG.apiKey en
+   la consola del navegador (window.AI_CONFIG.apiKey = "sk-...").
+   El fetch CORS de Anthropic exige el header "anthropic-dangerous-direct-browser-access"
+   solo en algunas versiones; el patrón recomendado es siempre proxy backend.
+   =========================================================== */
+const AI_CONFIG = {
+  provider: "demo",           // "demo" | "claude" | "openai" | "gemini"
+  endpoint: "https://api.anthropic.com/v1/messages",
+  model: "claude-sonnet-4-5", // ajustar al modelo vigente
+  apiKey: "",                 // NO pegar aquí — usar backend proxy
+  maxTokens: 1500,
+  systemPrompt: `Eres un Ingeniero Eléctrico Senior con 25 años de experiencia en proyectos eléctricos en Chile.
+Eres especialista en:
+- Reglamentos y Pliegos Técnicos RIC de la Superintendencia de Electricidad y Combustibles (SEC).
+- Diseño de canalizaciones, conductores, tableros, puesta a tierra, iluminación y montaje industrial/minero.
+- Cubicación, presupuesto, especificaciones técnicas, matrices de cumplimiento.
+- Normas NCh, IEC 60364, NFPA 70E (referencia de seguridad).
+
+Reglas críticas:
+1. NO inventes artículos específicos de RIC SEC si no tienes el documento normativo cargado al proyecto.
+   Si no tienes la referencia exacta, indica "Referencia general, validar contra RIC SEC vigente".
+2. Toda recomendación de cantidad debe declarar fuente: plano, base técnica, planilla, estimación o manual.
+3. Para canalizaciones siempre incluir: ducto + curvas + coplas + cajas + soportes + abrazaderas + prensas + fijaciones + misceláneos.
+4. Para conductores: terminales + identificación + conectores + prensaestopas + amarras + protección + canalización asociada + pruebas.
+5. Para tableros: gabinete + protecciones + barras + bornes + rotulación + canaletas + peines + cableado + pruebas.
+6. Para puesta a tierra: conductor + barra + electrodos + uniones + soldadura exotérmica + cámaras + medición + protocolo.
+7. Cita norma cuando corresponda y márcala como "referencia general" si no está validada.
+8. Sé conciso, técnico, profesional. Responde en español de Chile.`,
+};
+
+/* ===========================================================
+   DATOS DEMO — PROYECTO INDUSTRIAL MINERO
+   =========================================================== */
+const DEMO_DATA = {
+  proyecto: {
+    nombre: "Sala Eléctrica MCC-01 · Planta Concentradora",
+    mandante: "Minera Los Andes S.A.",
+    ubicacion: "Antofagasta, Chile",
+    tipo: "Minería",
+    disciplina: "Eléctrica B.T.",
+    fecha: "2026-05-18",
+    tension: 400,
+    freq: 50,
+    potencia: 850,
+    corriente: 1480,
+    carga: "Variadores/Electrónica",
+    ambiente: "Industrial / polvo",
+    tempAmb: 35,
+    metodo: "Bandeja perforada",
+    marcas: "Schneider, ABB, Legrand, Siemens, Prysmian, Madeco, Cembre",
+    restricciones: "Sin aluminio en fuerza; rotulación en español; protocolos SEC obligatorios.",
+    normas: "RIC SEC N°02, RIC SEC N°04, RIC SEC N°06, NCh Elec 4/2003 (vigente al cargar), IEC 60364, NFPA 70E (ref.)"
+  },
+  config: {
+    moneda: "CLP",
+    ivaPct: 19,
+    tarifaHH: 18500,
+    factorPerdida: 5,
+    ggPct: 12,
+    utilidadPct: 10,
+    factorAltura: 1.1,
+    factorDific: 1.15
+  },
+  documentos: [
+    {id:1, nombre:"E-EL-001_R0_PlanoUnilineal.pdf", tipo:"PDF", tamañoKB:2840, estado:"Procesado (simulado)",
+     info:"Tableros: TGM, TGS-01, TGS-02. Alimentadores: 4 ramales. Notas técnicas: 12.",
+     obs:"Falta revisión R1 con cambios de cliente."},
+    {id:2, nombre:"E-EL-002_R0_Canalizaciones.dxf", tipo:"DXF", tamañoKB:5620, estado:"Procesado (simulado)",
+     info:"Layers: BANDEJAS_300, BANDEJAS_450, EMT_25, EMT_40, PAT. Longitudes totales: 412 m.",
+     obs:"Layer PAT incompleta en sector sur."},
+    {id:3, nombre:"BasesTecnicas_LicitacionMCC01.docx", tipo:"DOCX", tamañoKB:340, estado:"Indexado",
+     info:"Alcance, exigencias mandante, marcas permitidas, protocolos.",
+     obs:"Sección 6.4 menciona certificación SEC obligatoria."},
+    {id:4, nombre:"Cubicacion_proyecto_anterior.xlsx", tipo:"XLSX", tamañoKB:120, estado:"Cargado",
+     info:"245 ítems. Estructura: Ítem | Descripción | Unidad | Cantidad | PU | Total.",
+     obs:"Útil como referencia, precios desactualizados."},
+    {id:5, nombre:"Catalogo_Schneider_Compact_NSX.pdf", tipo:"PDF", tamañoKB:8420, estado:"Indexado",
+     info:"Interruptores automáticos hasta 630A. Curvas, accesorios, accesorios eléctricos.",
+     obs:"—"},
+    {id:6, nombre:"Foto_Sala_Existente_01.jpg", tipo:"IMG", tamañoKB:1820, estado:"Cargado",
+     info:"Sala eléctrica existente, espacio disponible, interferencias HVAC.",
+     obs:"Solicitar mediciones in situ."}
+  ],
+  cubicacion: [
+    // === CONDUCTORES ===
+    {id:1, partida:"Conductores", sistema:"Fuerza", area:"MCC-01", descripcion:"Conductor XTU 0,6/1 kV 3x4 mm² Cu", unidad:"m", cantidad:480, factor:5, pu:2380, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:2, partida:"Conductores", sistema:"Fuerza", area:"MCC-01", descripcion:"Conductor XTU 0,6/1 kV 3x6 mm² Cu", unidad:"m", cantidad:320, factor:5, pu:3180, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:3, partida:"Conductores", sistema:"Fuerza", area:"MCC-01", descripcion:"Conductor XTU 0,6/1 kV 3x16 mm² Cu", unidad:"m", cantidad:180, factor:5, pu:7950, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:4, partida:"Conductores", sistema:"Fuerza", area:"MCC-01", descripcion:"Conductor XTU 0,6/1 kV 3x35 mm² Cu", unidad:"m", cantidad:120, factor:5, pu:17800, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"Alimentador principal"},
+    {id:5, partida:"Conductores", sistema:"Control", area:"MCC-01", descripcion:"Conductor EVA 0,6/1 kV 2x1,5 mm² Cu", unidad:"m", cantidad:620, factor:5, pu:980, fuente:"plano", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+    {id:6, partida:"Conductores", sistema:"PAT", area:"General", descripcion:"Conductor Cu desnudo 35 mm²", unidad:"m", cantidad:240, factor:3, pu:6800, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"Anillo PAT"},
+
+    // === CANALIZACIONES — BANDEJAS ===
+    {id:7, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Bandeja portaconductores galvanizada 300x75 mm tramo 3 m", unidad:"un", cantidad:42, factor:3, pu:38500, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:8, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Curva 90° horizontal galv. 300 mm", unidad:"un", cantidad:14, factor:3, pu:22400, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:9, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Copla unión galv. 300 mm", unidad:"un", cantidad:42, factor:3, pu:4500, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:10, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Soporte ménsula bandeja 300 mm c/2 m", unidad:"un", cantidad:65, factor:3, pu:8900, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"Estimado por largo total"},
+    {id:11, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Tapa galvanizada bandeja 300 mm x 3 m", unidad:"un", cantidad:42, factor:3, pu:18200, fuente:"manual", confianza:"Media", norma:"RIC SEC ref.", obs:"Sólo zona expuesta a daño"},
+
+    // === CANALIZACIONES — EMT ===
+    {id:12, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Tubería EMT galv. Ø25 mm largo 3 m", unidad:"un", cantidad:38, factor:5, pu:9800, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:13, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Curva EMT 90° Ø25 mm", unidad:"un", cantidad:28, factor:5, pu:1850, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:14, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Copla EMT Ø25 mm", unidad:"un", cantidad:48, factor:5, pu:780, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"Por tramo + uniones"},
+    {id:15, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Caja de paso galv. 200x200x100", unidad:"un", cantidad:22, factor:3, pu:14500, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:16, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Prensa estopa metálica Pg29", unidad:"un", cantidad:84, factor:5, pu:1450, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+    {id:17, partida:"Canalizaciones", sistema:"Fuerza", area:"MCC-01", descripcion:"Abrazadera media caña Ø25 + tarugo + tornillo", unidad:"un", cantidad:280, factor:7, pu:480, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+
+    // === TABLEROS ===
+    {id:18, partida:"Tableros", sistema:"Fuerza", area:"MCC-01", descripcion:"Tablero TGM autosop. 1800x800x600 IP54", unidad:"un", cantidad:1, factor:0, pu:1850000, fuente:"base técnica", confianza:"Alta", norma:"RIC SEC ref.", obs:"Con barras Cu 600A"},
+    {id:19, partida:"Tableros", sistema:"Fuerza", area:"MCC-01", descripcion:"Interruptor automático tetrapolar 4x400A 36kA", unidad:"un", cantidad:1, factor:0, pu:980000, fuente:"base técnica", confianza:"Alta", norma:"RIC SEC ref.", obs:"Principal"},
+    {id:20, partida:"Tableros", sistema:"Fuerza", area:"MCC-01", descripcion:"Interruptor automático tetrapolar 4x100A 25kA", unidad:"un", cantidad:6, factor:0, pu:285000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:21, partida:"Tableros", sistema:"Fuerza", area:"MCC-01", descripcion:"Interruptor automático tetrapolar 4x63A 10kA", unidad:"un", cantidad:8, factor:0, pu:145000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:22, partida:"Tableros", sistema:"Fuerza", area:"MCC-01", descripcion:"Interruptor diferencial 4x63A 30mA", unidad:"un", cantidad:8, factor:0, pu:185000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:23, partida:"Tableros", sistema:"Fuerza", area:"MCC-01", descripcion:"Contactor tripolar 65A AC3 c/bobina 230V", unidad:"un", cantidad:6, factor:0, pu:95000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+
+    // === ILUMINACIÓN ===
+    {id:24, partida:"Iluminación", sistema:"Alumbrado", area:"Sala Eléctrica", descripcion:"Luminaria LED industrial 150 W IP65 5000K", unidad:"un", cantidad:18, factor:3, pu:148000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:25, partida:"Iluminación", sistema:"Emergencia", area:"Sala Eléctrica", descripcion:"Luminaria emergencia LED 8W autónoma 90min", unidad:"un", cantidad:6, factor:3, pu:42000, fuente:"base técnica", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+
+    // === TOMACORRIENTES ===
+    {id:26, partida:"Tomacorrientes", sistema:"SS.AA", area:"Sala Eléctrica", descripcion:"Toma industrial CEE 16A 3P+T+N IP44", unidad:"un", cantidad:8, factor:5, pu:18500, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:27, partida:"Tomacorrientes", sistema:"SS.AA", area:"Sala Eléctrica", descripcion:"Toma industrial CEE 32A 3P+T+N IP67", unidad:"un", cantidad:4, factor:5, pu:38500, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+
+    // === PUESTA A TIERRA ===
+    {id:28, partida:"Puesta a tierra", sistema:"PAT", area:"General", descripcion:"Electrodo Cu-Cu 5/8\" x 2400 mm", unidad:"un", cantidad:8, factor:0, pu:32000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:29, partida:"Puesta a tierra", sistema:"PAT", area:"General", descripcion:"Soldadura exotérmica 90g (cable-cable / cable-barra)", unidad:"un", cantidad:24, factor:10, pu:9800, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+    {id:30, partida:"Puesta a tierra", sistema:"PAT", area:"General", descripcion:"Cámara de inspección hormigón con tapa 400x400", unidad:"un", cantidad:6, factor:0, pu:65000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+    {id:31, partida:"Puesta a tierra", sistema:"PAT", area:"Tablero", descripcion:"Barra de tierra Cu 30x3 mm con aisladores", unidad:"un", cantidad:3, factor:0, pu:48000, fuente:"plano", confianza:"Alta", norma:"RIC SEC ref.", obs:"—"},
+
+    // === MISCELÁNEOS ===
+    {id:32, partida:"Misceláneos", sistema:"Identif.", area:"General", descripcion:"Set rotulación cables (anillos numerados c/100 un)", unidad:"un", cantidad:8, factor:5, pu:18500, fuente:"manual", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+    {id:33, partida:"Misceláneos", sistema:"Conex.", area:"General", descripcion:"Terminal Cu prensar 16mm² M8", unidad:"un", cantidad:120, factor:7, pu:850, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+    {id:34, partida:"Misceláneos", sistema:"Conex.", area:"General", descripcion:"Terminal Cu prensar 35mm² M10", unidad:"un", cantidad:80, factor:7, pu:1450, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+    {id:35, partida:"Misceláneos", sistema:"Aisl.", area:"General", descripcion:"Cinta aislante 19mm x 20m clase 600V", unidad:"un", cantidad:30, factor:10, pu:3200, fuente:"estimado", confianza:"Media", norma:"RIC SEC ref.", obs:"—"},
+    {id:36, partida:"Misceláneos", sistema:"Pruebas", area:"General", descripcion:"Set pruebas y protocolo SEC (megger + continuidad + tierra)", unidad:"gl", cantidad:1, factor:0, pu:380000, fuente:"base técnica", confianza:"Alta", norma:"RIC SEC ref.", obs:"Subcontratado"},
+  ],
+  // HH por ítem (índice corresponde a cubicacion.id)
+  hh: {
+    1:0.06, 2:0.07, 3:0.10, 4:0.18, 5:0.04, 6:0.06,
+    7:0.60, 8:0.45, 9:0.20, 10:0.35, 11:0.25,
+    12:0.18, 13:0.10, 14:0.08, 15:0.45, 16:0.06, 17:0.08,
+    18:24, 19:6, 20:3, 21:2, 22:2, 23:1.5,
+    24:0.7, 25:0.5,
+    26:0.6, 27:0.8,
+    28:1.2, 29:0.4, 30:3, 31:1.5,
+    32:0.05, 33:0.08, 34:0.10, 35:0.05, 36:8
+  },
+  alternativas: {
+    "Canalización (cables MCC-01)": [
+      {nombre:"Bandeja galvanizada 300 mm + tapa", ventajas:"Mantenimiento simple, gran capacidad, accesible para futuras ampliaciones, vida útil > 25 años en ambiente seco.", desventajas:"Costo más alto, requiere soportación estructural robusta.", costoRel:"Alto (1.0)", riesgo:"Bajo", uso:"Estándar industrial/minero, tramos largos."},
+      {nombre:"Escalerilla portacable galv. 300 mm", ventajas:"Disipación térmica óptima, menor peso, costo medio.", desventajas:"Sin tapa: expuesta a daño mecánico y polvo.", costoRel:"Medio (0.85)", riesgo:"Medio", uso:"Recorridos a la vista en altura, sin exposición a daño."},
+      {nombre:"Tubería EMT Ø40-50 mm múltiples", ventajas:"Bajo costo unitario, ya empleado en sala.", desventajas:"Limita reconfiguración futura, mayor número de cajas y curvas, mano de obra alta.", costoRel:"Bajo (0.65)", riesgo:"Medio", uso:"Ramales cortos, no para alimentadores principales."},
+      {nombre:"Ducto subterráneo PVC + cámaras", ventajas:"Protección mecánica máxima, sin obstrucción aérea.", desventajas:"Obra civil costosa, drenaje obligatorio, complicado para ampliaciones.", costoRel:"Alto (1.2)", riesgo:"Alto (obra civil)", uso:"Salida desde sala hacia patio o equipos exteriores."},
+    ],
+    "Conductor alimentador 3x35 mm²": [
+      {nombre:"Cobre XTU 0,6/1 kV", ventajas:"Estándar mercado chileno, certificación SEC disponible, aislación 90°C.", desventajas:"Mayor costo vs aluminio.", costoRel:"Medio (1.0)", riesgo:"Bajo", uso:"Alimentadores fuerza industrial."},
+      {nombre:"Cobre EVA 0,6/1 kV", ventajas:"Aislación libre de halógeno, menor humo en incendio.", desventajas:"Costo superior, disponibilidad limitada en algunos calibres.", costoRel:"Alto (1.15)", riesgo:"Bajo", uso:"Espacios cerrados con público, salas eléctricas."},
+      {nombre:"Aluminio XLPE", ventajas:"30-40% más económico, peso reducido.", desventajas:"Mayor sección, restringido por mandante en este proyecto.", costoRel:"Bajo (0.6)", riesgo:"Medio (uniones)", uso:"Solo si la base lo permite — aquí NO admisible."},
+      {nombre:"Conductor RV-K libre halógeno", ventajas:"Flexibilidad alta, aislación 90°C, retardante a llama.", desventajas:"Costo elevado.", costoRel:"Alto (1.2)", riesgo:"Bajo", uso:"Salas eléctricas con normativa estricta de incendio."},
+    ],
+    "Soportación bandejas": [
+      {nombre:"Ménsula tipo C galv. caliente + perno expansivo", ventajas:"Sencillo, económico, rápido montaje.", desventajas:"Requiere muro/losa con resistencia adecuada.", costoRel:"Bajo (1.0)", riesgo:"Bajo", uso:"Sala con muros de hormigón sólidos."},
+      {nombre:"Estructura suspendida con varilla roscada Ø10", ventajas:"Independiente de muros, modular.", desventajas:"Carga sobre losa, más cara, sísmico requiere riostras.", costoRel:"Medio (1.4)", riesgo:"Medio (sísmico)", uso:"Salas con altura > 4 m o muros débiles."},
+      {nombre:"Pedestal estructural anclado al piso", ventajas:"Ideal para tramos en planta abierta.", desventajas:"Ocupa piso, mayor costo civil.", costoRel:"Alto (2.0)", riesgo:"Bajo", uso:"Plantas de proceso a piso."},
+    ]
+  },
+  catalogos: [
+    {id:1, material:"Interruptor automático 4x400A 36kA", marca:"Schneider Electric", modelo:"Compact NSX400N Micrologic 2.3", caract:"In=400A, Icu=36kA, curva ajust., trifásico+N", norma:"IEC 60947-2", link:"se.com/cl/.../nsx", equiv:"ABB Tmax XT4 / Siemens 3VA2", estado:"Validar SEC"},
+    {id:2, material:"Interruptor diferencial 4x63A 30mA", marca:"Schneider Electric", modelo:"iID-K 4P 63A 30mA", caract:"Tipo AC, 4P, 230/400V", norma:"IEC 61008", link:"se.com/cl/.../iid", equiv:"ABB F204 / Legrand RX3", estado:"OK"},
+    {id:3, material:"Bandeja galvanizada 300x75 mm", marca:"Cablofil", modelo:"CF-300-75 galv. en caliente", caract:"3 m, perforada, galv. caliente", norma:"NEMA VE-1 / IEC 61537", link:"cablofil.com", equiv:"Marvik / Vergara", estado:"Validar disponibilidad"},
+    {id:4, material:"Conductor XTU 3x35 mm² Cu", marca:"Prysmian", modelo:"XTU 0.6/1 kV Cu", caract:"Aislación XLPE, retardante llama", norma:"NCh Elec / IEC 60502-1", link:"prysmian.cl", equiv:"Madeco / Nexans Superastic", estado:"OK"},
+    {id:5, material:"Luminaria LED industrial 150 W IP65", marca:"Philips", modelo:"BY698P GreenPerform", caract:"150 W, 18.000 lm, 5000K, IP65", norma:"IEC 60598", link:"philips.cl", equiv:"Sylvania / OSRAM HighBay", estado:"OK"},
+    {id:6, material:"Electrodo Cu-Cu 5/8\" x 2400 mm", marca:"Cembre", modelo:"GR-58-2400", caract:"Acero recubierto Cu 250µm", norma:"UL 467", link:"cembre.com", equiv:"Burndy / nVent ERICO", estado:"OK"},
+    {id:7, material:"Soldadura exotérmica 90 g", marca:"nVent ERICO", modelo:"Cadweld 90g", caract:"Conexión cable-cable, cable-barra", norma:"IEEE 837", link:"nvent.com/erico", equiv:"Tecnoweld / Furse", estado:"OK"},
+    {id:8, material:"Tablero TGM 1800x800x600 IP54", marca:"Legrand", modelo:"XL3 4000", caract:"Estructura modular, IP54, barras 600A", norma:"IEC 61439", link:"legrand.cl", equiv:"Schneider Prisma / Rittal SE", estado:"Validar SEC"},
+  ],
+  normativa: [
+    {id:1, requisito:"Canalización adecuada al ambiente industrial con polvo", ref:"RIC SEC (referencia general) / IEC 60364", estado:"Cumple", evidencia:"Bandeja galv. + EMT galv. + cajas IP54", obs:"Validar artículo específico vigente RIC."},
+    {id:2, requisito:"Sección conductor ≥ mínima reglamentaria por capacidad y caída de tensión", ref:"RIC SEC (referencia general)", estado:"Cumple", evidencia:"Memoria de cálculo conductores (módulo Conductores)", obs:"Caída < 3% en todos los ramales."},
+    {id:3, requisito:"Protección diferencial 30 mA en circuitos terminales", ref:"RIC SEC (ref.)", estado:"Cumple", evidencia:"Diferenciales 30 mA en todos los ramales de SS.AA.", obs:"—"},
+    {id:4, requisito:"Sistema de puesta a tierra con resistencia ≤ 5 Ω", ref:"RIC SEC (ref.) / IEEE 80", estado:"Requiere validación", evidencia:"Diseño preliminar con 8 electrodos", obs:"Medir resistividad del terreno y verificar."},
+    {id:5, requisito:"Rotulación de tableros y conductores en español", ref:"Bases técnicas mandante", estado:"Cumple", evidencia:"Especificación incluida en EETT", obs:"—"},
+    {id:6, requisito:"Certificación SEC para tableros TE-1 (cuando aplique)", ref:"DS N°92 SEC", estado:"Requiere validación", evidencia:"Pendiente confirmar con fabricante", obs:"Solicitar certificado al proveedor."},
+    {id:7, requisito:"Iluminación de emergencia con autonomía ≥ 90 min", ref:"RIC SEC (ref.) / NCh", estado:"Cumple", evidencia:"Luminarias 90 min en sala eléctrica", obs:"—"},
+    {id:8, requisito:"Protocolo de pruebas eléctricas y entrega TE-1 / TE-2", ref:"DS N°92 SEC", estado:"Requiere validación", evidencia:"Incluido en partida pruebas (ítem 36)", obs:"Confirmar tipo de declaración."},
+    {id:9, requisito:"Ocupación de canalización ≤ 40% para 3 o más conductores", ref:"RIC SEC (ref.) / NEC 310", estado:"Requiere validación", evidencia:"Calcular caso a caso en módulo Canalizaciones", obs:"—"},
+    {id:10, requisito:"Distancia entre cajas de paso para conductores rígidos", ref:"RIC SEC (ref.)", estado:"Cumple", evidencia:"Cajas cada ≤ 12 m en ramales EMT", obs:"—"},
+    {id:11, requisito:"Sellos de paso EI120 en pase de muros cortafuego", ref:"NCh ISO 3008", estado:"No aplica", evidencia:"Sala no tiene sectorización", obs:"—"},
+    {id:12, requisito:"Coordinación selectiva entre protecciones", ref:"IEC 60364-5-53", estado:"Requiere validación", evidencia:"Curvas a ajustar tras criticidad", obs:"Estudio de selectividad pendiente."},
+  ],
+  riesgos: [
+    {id:1, cat:"Normativo", desc:"RIC SEC vigente no cargado al proyecto", prob:"Alta", impacto:"Alto", nivel:"Crítico", mit:"Solicitar versión vigente y validar todas las referencias.", resp:"Líder eléctrico"},
+    {id:2, cat:"Técnico", desc:"Layer PAT incompleta en DXF sector sur", prob:"Media", impacto:"Medio", nivel:"Importante", mit:"Solicitar plano actualizado o relevar en terreno.", resp:"Ingeniería"},
+    {id:3, cat:"Constructivo", desc:"Estructura existente sin riostras sísmicas para bandejas", prob:"Media", impacto:"Alto", nivel:"Importante", mit:"Verificar cálculo sísmico, incluir riostras en presupuesto.", resp:"Estructural"},
+    {id:4, cat:"Comercial", desc:"Precio interruptor 4x400A con volatilidad alta", prob:"Alta", impacto:"Medio", nivel:"Importante", mit:"Cotizar 3 proveedores y bloquear precio.", resp:"Compras"},
+    {id:5, cat:"Seguridad", desc:"Trabajo en altura > 4 m en montaje bandejas", prob:"Alta", impacto:"Alto", nivel:"Crítico", mit:"Plan de trabajo en altura, arnés, andamios certificados.", resp:"Prev. riesgos"},
+    {id:6, cat:"Plazo", desc:"Tiempo de fabricación tablero TGM > 8 semanas", prob:"Alta", impacto:"Medio", nivel:"Importante", mit:"Anticipar compra y validar especificación antes del kick-off.", resp:"Gestión proyecto"},
+    {id:7, cat:"Técnico", desc:"Selectividad entre protecciones no estudiada", prob:"Media", impacto:"Medio", nivel:"Moderado", mit:"Estudio de selectividad en ingeniería de detalle.", resp:"Ingeniería"},
+  ],
+  especificaciones: [
+    {partida:"Conductores eléctricos", contenido:
+`1. ALCANCE
+Suministro e instalación de conductores eléctricos de cobre con aislación termoplástica/elastomérica para tensión nominal 0,6/1 kV, según los calibres definidos en planos y cubicación.
+
+2. NORMA APLICABLE
+- RIC SEC (versión vigente — validar al inicio del proyecto).
+- NCh Elec 4/2003 (referencia general).
+- IEC 60502-1.
+
+3. CARACTERÍSTICAS
+- Material: Cu electrolítico recocido, clase 2 o 5 según aplicación.
+- Aislación: XLPE (XTU) o EPR según ambiente.
+- Cubierta: PVC retardante a llama o LSZH cuando se requiera.
+- Tensión: 0,6/1 kV.
+- Temperatura máxima en servicio continuo: 90°C.
+- Temperatura cortocircuito: 250°C.
+
+4. INSTALACIÓN
+- Sobre bandejas portacables o en canalizaciones rígidas EMT.
+- Radio de curvatura ≥ 10·D para multipolar.
+- Identificación en cada extremo y en cajas de paso (anillos numerados).
+- Conexionado con terminales prensables, par de apriete según fabricante.
+
+5. PRUEBAS
+- Continuidad eléctrica.
+- Aislación con megger 1000 V (≥ 1 MΩ por circuito).
+- Caída de tensión bajo carga nominal.
+- Protocolo SEC TE-1 / TE-2 según corresponda.
+
+6. ACCESORIOS COMPLEMENTARIOS (incluir en cubicación)
+Terminales, conectores, prensaestopas, amarras, identificación, cinta aisladora, sellos de paso.`, normaRef:"RIC SEC ref. · IEC 60502-1", validado:false},
+
+    {partida:"Canalizaciones tipo bandeja", contenido:
+`1. ALCANCE
+Suministro e instalación de bandejas portaconductores galvanizadas tipo perforada o sólida para conducción de conductores de fuerza, control y comunicaciones.
+
+2. NORMA
+- RIC SEC (referencia general).
+- IEC 61537.
+- NEMA VE-1.
+
+3. MATERIALIDAD
+- Acero galvanizado en caliente, espesor según altura/ancho.
+- Resistencia mecánica acorde a carga calculada + factor de seguridad ≥ 1.5.
+- Grado de protección coherente con el ambiente (IP54 o tapa cerrada en zona con polvo).
+
+4. INSTALACIÓN
+- Soportación cada ≤ 1.5 m en tramos horizontales, ≤ 1.0 m en verticales.
+- Riostras sísmicas según evaluación estructural.
+- Continuidad eléctrica garantizada con puentes a PAT cada tramo.
+- Tapas en zonas accesibles o expuestas a daño mecánico.
+
+5. PRUEBAS
+- Verificación visual de aplome, alineación y fijación.
+- Medición de continuidad a tierra.
+- Inspección de pares de apriete.
+
+6. ACCESORIOS (incluir en cubicación)
+Curvas (45° y 90°), coplas, reducciones, tees, tapas, ménsulas, varillas roscadas, riostras, fijaciones, anclajes químicos, puentes equipotenciales.`, normaRef:"IEC 61537 · NEMA VE-1", validado:false},
+
+    {partida:"Tableros eléctricos", contenido:
+`1. ALCANCE
+Suministro, fabricación y montaje de tablero general TGM con compartimientos para protecciones, barras y celdas de salida.
+
+2. NORMA
+- IEC 61439-1 / -2.
+- RIC SEC (referencia general).
+- Certificación SEC TE-1 cuando aplique.
+
+3. CARACTERÍSTICAS
+- Gabinete metálico autosoportado, espesor ≥ 1.5 mm, pintura epoxi RAL 7035.
+- IP54 mínimo (industrial).
+- Barras de cobre electrolítico dimensionadas para 600A.
+- Identificación de protecciones, circuitos y peligros.
+- Bornera dedicada para PAT.
+
+4. PROTECCIONES
+Interruptores automáticos según diagrama unilineal, con Icu coordinada al nivel de falla del punto. Diferenciales 30 mA en circuitos terminales.
+
+5. INSTALACIÓN
+- Anclaje sísmico al piso.
+- Espacio frontal mínimo según RIC SEC (validar).
+- Conexionado prolijo con canaletas internas, peines de fase, identificación con numeración consistente con planos.
+
+6. PRUEBAS Y DOCUMENTACIÓN
+- Megger barras y circuitos.
+- Verificación pares de apriete.
+- Termografía bajo carga.
+- Protocolos SEC TE-1.
+- Memoria de fabricación, ensayos de tipo y rutina del fabricante.
+
+7. ACCESORIOS (incluir en cubicación)
+Bornes, canaletas plásticas, peines de fase, conectores, terminales preaislados, marcadores, separadores, ferretería de montaje, prensas de fijación de cables.`, normaRef:"IEC 61439 · DS N°92 SEC", validado:false},
+
+    {partida:"Puesta a tierra", contenido:
+`1. ALCANCE
+Sistema de puesta a tierra del proyecto, incluyendo malla, electrodos, conductores y cámaras.
+
+2. NORMA
+- RIC SEC (referencia general).
+- IEEE 80 / IEEE 81 para medición.
+- NCh Elec.
+
+3. COMPONENTES
+- Conductor desnudo Cu ≥ 35 mm² para anillo principal.
+- Electrodos Cu-Cu 5/8" x 2400 mm.
+- Soldadura exotérmica para uniones permanentes.
+- Cámaras de inspección con tapa identificada.
+- Barra de tierra principal en sala eléctrica.
+
+4. CRITERIOS
+- Resistencia objetivo ≤ 5 Ω (verificar criterio del proyecto y del mandante).
+- Equipotencialización de masas metálicas (bandejas, gabinetes, estructuras).
+- Conductores de protección verde/amarillo identificados.
+
+5. PRUEBAS
+- Medición de resistividad del terreno (Wenner) antes del diseño.
+- Medición de resistencia con telurómetro (caída de potencial).
+- Continuidad de conductores de protección.
+
+6. ACCESORIOS (incluir en cubicación)
+Conductor, electrodos, soldadura exotérmica, moldes, terminales bimetálicos, abrazaderas, cámaras de inspección, tapas, identificación, instrumento de medición o subcontrato.`, normaRef:"IEEE 80 · RIC SEC ref.", validado:false},
+  ],
+};
+
+// Mensaje inicial del chat
+const CHAT_INIT = [
+  {role:"ai", text:`Hola Daniel, soy el Asistente Técnico Eléctrico IA.
+
+Puedo ayudarte con:
+• Selección de conductores y canalizaciones (RIC SEC ref.)
+• Cubicación, presupuesto y alternativas técnicas
+• Especificaciones técnicas por partida
+• Revisión de bases técnicas y matriz de cumplimiento
+• Catálogos de mercado chileno
+
+Estoy en modo demo (offline). Para activar Claude API en tiempo real, ver el bloque "AI_CONFIG" en el código fuente. ¿Por dónde partimos?`, meta:"demo · prompt sistema RIC SEC"}
+];
+
+/* ===========================================================
+   STATE GLOBAL — copia trabajable del demo
+   =========================================================== */
+let state = JSON.parse(JSON.stringify(DEMO_DATA));
+let chatHistory = JSON.parse(JSON.stringify(CHAT_INIT));
+
+/* ===========================================================
+   UTILIDADES
+   =========================================================== */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => document.querySelectorAll(sel);
+const fmt = n => (Number(n)||0).toLocaleString("es-CL",{maximumFractionDigits:0});
+const fmt2 = n => (Number(n)||0).toLocaleString("es-CL",{maximumFractionDigits:2});
+const get = (obj, path) => path.split(".").reduce((o,k)=>o&&o[k]!==undefined?o[k]:"", obj);
+const set = (obj, path, val) => {
+  const ks = path.split(".");
+  const last = ks.pop();
+  const tgt = ks.reduce((o,k)=>o[k] = o[k]||{}, obj);
+  tgt[last] = val;
+};
+
+function fuenteBadge(f){
+  const m = {plano:"src-plano","base técnica":"src-base", base:"src-base", planilla:"src-planilla", estimado:"src-est", manual:"src-manual"};
+  return `<span class="badge ${m[f]||"muted"}">${f||"—"}</span>`;
+}
+function estadoBadge(s){
+  const m = {"Cumple":"ok","No cumple":"err","Requiere validación":"warn","No aplica":"muted","OK":"ok","Validar SEC":"warn","Validar disponibilidad":"warn","Crítico":"err","Importante":"warn","Moderado":"info"};
+  return `<span class="badge ${m[s]||"muted"}">${s}</span>`;
+}
+
+/* ===========================================================
+   NAVEGACIÓN
+   =========================================================== */
+App.switchTab = function(name){
+  $$(".nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  $$(".tab").forEach(t=>t.classList.toggle("active", t.id==="tab-"+name));
+  const labels = {inicio:"Inicio", carga:"Carga de documentos", datos:"Datos del proyecto",
+    analisis:"Análisis documental", cubicacion:"Cubicación", presupuesto:"Presupuesto",
+    especificaciones:"Especificaciones técnicas", alternativas:"Alternativas",
+    conductores:"Conductores", canalizaciones:"Canalizaciones", catalogos:"Catálogos",
+    normativa:"Matriz normativa", riesgos:"Riesgos y observaciones", chat:"Asistente IA",
+    exportables:"Exportables"};
+  $("#crumbTab").textContent = labels[name]||name;
+  document.querySelector(".content").scrollTop = 0;
+};
+
+document.addEventListener("click", e=>{
+  const b = e.target.closest(".nav button");
+  if(b) App.switchTab(b.dataset.tab);
+});
+$("#btnIA").onclick = ()=>App.switchTab("chat");
+
+/* ===========================================================
+   BIND DE FORMULARIOS (Datos del proyecto)
+   =========================================================== */
+App.bindForms = function(){
+  $$("[data-bind]").forEach(inp=>{
+    const path = inp.dataset.bind;
+    inp.value = get(state, path);
+    inp.addEventListener("input", ()=>{
+      let v = inp.value;
+      if(inp.type==="number") v = parseFloat(v)||0;
+      set(state, path, v);
+      App.updateCrumb();
+    });
+  });
+};
+
+App.updateCrumb = function(){
+  $("#crumbProyecto").innerHTML = "Proyecto: <b>"+ (state.proyecto.nombre||"—") +"</b>";
+};
+
+/* ===========================================================
+   INICIO — KPIs
+   =========================================================== */
+App.renderInicio = function(){
+  $("#kpiItems").textContent = state.cubicacion.length;
+  $("#kpiDocs").textContent  = state.documentos.length;
+  const total = App.calcTotalFinal();
+  $("#kpiTotal").textContent = fmt(total) + " " + state.config.moneda;
+  const brechas = state.normativa.filter(n=>n.estado==="Requiere validación"||n.estado==="No cumple").length;
+  $("#kpiBrechas").textContent = brechas;
+
+  const p = state.proyecto;
+  $("#resumenDatos").innerHTML = `
+    <tr><td><b>Nombre</b></td><td>${p.nombre||"—"}</td></tr>
+    <tr><td><b>Mandante</b></td><td>${p.mandante||"—"}</td></tr>
+    <tr><td><b>Ubicación</b></td><td>${p.ubicacion||"—"}</td></tr>
+    <tr><td><b>Tipo</b></td><td>${p.tipo||"—"}</td></tr>
+    <tr><td><b>Tensión</b></td><td>${p.tension} V · ${p.freq} Hz</td></tr>
+    <tr><td><b>Potencia instalada</b></td><td>${p.potencia} kW (≈ ${p.corriente} A)</td></tr>
+    <tr><td><b>Ambiente</b></td><td>${p.ambiente}</td></tr>
+    <tr><td><b>Método instalación</b></td><td>${p.metodo}</td></tr>`;
+
+  const cumple = state.normativa.filter(n=>n.estado==="Cumple").length;
+  const noCumple = state.normativa.filter(n=>n.estado==="No cumple").length;
+  const valid = state.normativa.filter(n=>n.estado==="Requiere validación").length;
+  const na = state.normativa.filter(n=>n.estado==="No aplica").length;
+  const tot = state.normativa.length;
+  $("#resumenCumpl").innerHTML = `
+    <tr><td><span class="status-dot ok"></span><b>Cumple</b></td><td>${cumple} de ${tot}</td></tr>
+    <tr><td><span class="status-dot err"></span><b>No cumple</b></td><td>${noCumple} de ${tot}</td></tr>
+    <tr><td><span class="status-dot warn"></span><b>Requiere validación</b></td><td>${valid} de ${tot}</td></tr>
+    <tr><td><span class="status-dot info"></span><b>No aplica</b></td><td>${na} de ${tot}</td></tr>
+    <tr><td colspan="2" class="note">El detalle se encuentra en la Matriz Normativa.</td></tr>`;
+};
+
+/* ===========================================================
+   DOCUMENTOS
+   =========================================================== */
+App.renderDocs = function(){
+  const tbody = $("#tablaDocs tbody");
+  tbody.innerHTML = state.documentos.map((d,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${d.nombre}</b></td>
+      <td><span class="badge muted">${d.tipo}</span></td>
+      <td class="num">${fmt(d.tamañoKB)} KB</td>
+      <td><span class="badge info">${d.estado}</span></td>
+      <td>${d.info}</td>
+      <td><input value="${d.obs||""}" oninput="state.documentos[${i}].obs=this.value"></td>
+      <td><button class="btn sm danger" onclick="App.delDoc(${i})">×</button></td>
+    </tr>`).join("");
+};
+
+App.delDoc = function(i){ state.documentos.splice(i,1); App.renderDocs(); App.renderInicio(); };
+
+App.addDocoDemo = function(){
+  const ext = ["PDF","DXF","XLSX","DOCX","TXT","IMG"][Math.floor(Math.random()*6)];
+  const id = (state.documentos.at(-1)?.id||0)+1;
+  state.documentos.push({
+    id, nombre:`Documento_${id}.${ext.toLowerCase()}`, tipo:ext,
+    tamañoKB:Math.floor(Math.random()*5000)+100,
+    estado:"Cargado",
+    info:"— pendiente procesar (requiere backend) —",
+    obs:""
+  });
+  App.renderDocs(); App.renderInicio(); App.renderAnalisis();
+};
+
+App.handleFiles = async function(files){
+  // Si hay backend activo y proyecto remoto, subir al backend para procesamiento real
+  if(API.mode === "backend" && API.proyectoId){
+    for(const f of files){
+      try{
+        const doc = await API.subirDocumento(API.proyectoId, f);
+        state.documentos.push({
+          id: doc.id, nombre: doc.nombre, tipo: doc.tipo,
+          tamañoKB: doc.tamano_kb,
+          estado: "Procesando en backend...",
+          info: "Subido al servidor. Procesamiento en curso (PDF/DXF/XLSX real).",
+          obs: "",
+          _remoto: true,
+        });
+        App.renderDocs(); App.renderInicio();
+        // Polling de estado
+        App._pollDocumento(doc.id);
+      }catch(e){
+        alert("Error subiendo "+f.name+": "+e.message+"\n\nCayendo a modo local.");
+        App._addDocumentoLocal(f);
+      }
+    }
+  } else {
+    for(const f of files) App._addDocumentoLocal(f);
+  }
+  App.renderDocs(); App.renderInicio(); App.renderAnalisis();
+};
+
+App._addDocumentoLocal = function(f){
+  const ext = (f.name.split(".").pop()||"").toUpperCase();
+  const id = (state.documentos.at(-1)?.id||0)+1;
+  state.documentos.push({
+    id, nombre:f.name, tipo:ext, tamañoKB:Math.round(f.size/1024),
+    estado:"Cargado (modo demo · sin backend)",
+    info:"Para procesamiento real (parser + cubicación IA) levanta el backend con: docker-compose up",
+    obs:""
+  });
+};
+
+App._pollDocumento = async function(docId){
+  for(let i=0; i<30; i++){
+    await new Promise(r=>setTimeout(r, 2000));
+    try{
+      const d = await API.obtenerDocumento(docId);
+      const local = state.documentos.find(x=>x.id===docId);
+      if(local){
+        local.estado = d.estado;
+        local.info = d.contenido_estructurado
+          ? "Procesado. " + App._resumenContenido(d)
+          : (d.error ? "Error: " + d.error : local.info);
+        App.renderDocs(); App.renderAnalisis();
+      }
+      if(d.estado === "procesado" || d.estado === "error") break;
+    }catch(e){ break; }
+  }
+};
+
+App._resumenContenido = function(doc){
+  const e = doc.contenido_estructurado || {};
+  const m = doc.metadatos || {};
+  if(doc.tipo==="PDF") return `${(e.paginas||[]).length} págs · ${e.total_tablas||0} tablas.`;
+  if(doc.tipo==="DXF") return `${Object.keys(e.layers||{}).length} layers · ${Object.keys(e.bloques||{}).length} bloques.`;
+  if(doc.tipo==="XLSX") return `${(e.hojas||[]).length} hojas · ${e.items_detectados||0} ítems detectados.`;
+  if(doc.tipo==="DOCX") return `${m.headings_count||0} headings · ${m.tablas_count||0} tablas.`;
+  return "Procesado.";
+};
+
+/* ===========================================================
+   ANÁLISIS DOCUMENTAL
+   =========================================================== */
+App.renderAnalisis = function(){
+  $("#analisisDocs").innerHTML = state.documentos.map(d=>`
+    <div class="section-block">
+      <h4>${d.nombre} <span class="badge muted">${d.tipo}</span></h4>
+      <table class="data">
+        <tr><td style="width:200px;"><b>Estado</b></td><td>${d.estado}</td></tr>
+        <tr><td><b>Información detectada</b></td><td>${d.info}</td></tr>
+        <tr><td><b>Observaciones</b></td><td>${d.obs||"—"}</td></tr>
+        <tr><td><b>Trazabilidad</b></td><td class="note">Cualquier cantidad cubicada que provenga de este documento se marca con fuente "${d.tipo==="PDF"||d.tipo==="DXF"?"plano":d.tipo==="XLSX"?"planilla":"base técnica"}".</td></tr>
+      </table>
+    </div>`).join("");
+};
+
+/* ===========================================================
+   CUBICACIÓN
+   =========================================================== */
+App.calcTotalCub = function(){
+  return state.cubicacion.reduce((s,it)=>{
+    const cf = it.cantidad*(1+(it.factor||0)/100);
+    return s + cf*(it.pu||0);
+  },0);
+};
+
+App.renderCubicacion = function(){
+  // Llenar select de filtro
+  const partidas = [...new Set(state.cubicacion.map(c=>c.partida))];
+  const sel = $("#filtroPartida");
+  const valActual = sel.value;
+  sel.innerHTML = '<option value="">— Todas las partidas —</option>' +
+    partidas.map(p=>`<option value="${p}" ${p===valActual?"selected":""}>${p}</option>`).join("");
+
+  const filtro = sel.value;
+  const tbody = $("#tablaCubicacion tbody");
+  let total = 0;
+  tbody.innerHTML = state.cubicacion
+    .filter(it=>!filtro||it.partida===filtro)
+    .map((it,i)=>{
+      const idx = state.cubicacion.indexOf(it);
+      const cf = it.cantidad*(1+(it.factor||0)/100);
+      const t = cf*(it.pu||0);
+      total += t;
+      return `<tr>
+        <td>${i+1}</td>
+        <td>${it.partida}</td>
+        <td>${it.sistema||""}</td>
+        <td>${it.area||""}</td>
+        <td><input value="${it.descripcion}" oninput="state.cubicacion[${idx}].descripcion=this.value"></td>
+        <td>${it.unidad}</td>
+        <td class="num"><input type="number" value="${it.cantidad}" oninput="state.cubicacion[${idx}].cantidad=parseFloat(this.value)||0;App.recalcCubicacion()"></td>
+        <td class="num"><input type="number" value="${it.factor}" oninput="state.cubicacion[${idx}].factor=parseFloat(this.value)||0;App.recalcCubicacion()"></td>
+        <td class="num">${fmt2(cf)}</td>
+        <td class="num"><input type="number" value="${it.pu}" oninput="state.cubicacion[${idx}].pu=parseFloat(this.value)||0;App.recalcCubicacion()"></td>
+        <td class="num">${fmt(t)}</td>
+        <td>${fuenteBadge(it.fuente)}</td>
+        <td><span class="badge ${it.confianza==="Alta"?"ok":it.confianza==="Media"?"warn":"err"}">${it.confianza}</span></td>
+        <td>${it.norma||""}</td>
+        <td><input value="${it.obs||""}" oninput="state.cubicacion[${idx}].obs=this.value"></td>
+        <td><button class="btn sm danger" onclick="App.delCubRow(${idx})">×</button></td>
+      </tr>`;
+    }).join("");
+
+  $("#totalCubMat").textContent = fmt(total);
+};
+
+App.recalcCubicacion = function(){
+  App.renderCubicacion();
+  App.renderPresupuesto();
+  App.renderInicio();
+};
+
+App.addCubicacionRow = function(){
+  const id = (state.cubicacion.at(-1)?.id||0)+1;
+  state.cubicacion.push({
+    id, partida:"Misceláneos", sistema:"", area:"",
+    descripcion:"Nuevo ítem", unidad:"un",
+    cantidad:1, factor:state.config.factorPerdida, pu:0,
+    fuente:"manual", confianza:"Media", norma:"RIC SEC ref.", obs:""
+  });
+  App.recalcCubicacion();
+};
+
+App.delCubRow = function(i){
+  state.cubicacion.splice(i,1);
+  App.recalcCubicacion();
+};
+
+/* ===========================================================
+   AGENTE CUBICADOR (backend) — desde botón en cubicación
+   =========================================================== */
+App.ejecutarAgenteCubicador = async function(){
+  if(API.mode !== "backend" || !API.proyectoId){
+    alert("Agente IA requiere backend conectado y proyecto sincronizado.\n\n" +
+          "Pasos:\n" +
+          "1. Levantar el backend: docker-compose up\n" +
+          "2. Crear el proyecto en el backend desde la pestaña Inicio (botón '☁️ Sincronizar con backend').\n" +
+          "3. Subir documentos (PDF/DXF/XLSX) y esperar que estén 'procesados'.\n" +
+          "4. Volver aquí y reintentar.");
+    return;
+  }
+  if(!confirm("Ejecutar AgenteCubicador sobre los documentos procesados del proyecto?\n\nEsto enviará los datos a Claude API y puede tomar 20-60 segundos.")){
+    return;
+  }
+  const btn = event?.target;
+  if(btn){ btn.disabled = true; btn.textContent = "🤖 Generando..."; }
+  try{
+    const r = await API.agenteCubicador(API.proyectoId);
+    if(r.success){
+      alert(`✓ ${r.mensaje}\n\nItems creados: ${r.items_creados}\n\n` +
+            (r.detalle?.advertencias?.length ? "Advertencias:\n• " + r.detalle.advertencias.join("\n• ") : ""));
+      // Recargar cubicación desde backend
+      const items = await API.listarCubicacion(API.proyectoId);
+      state.cubicacion = items.map(it=>({
+        id: it.id, partida: it.partida, sistema: it.sistema, area: it.area,
+        descripcion: it.descripcion, unidad: it.unidad,
+        cantidad: it.cantidad, factor: it.factor_perdida, pu: it.precio_unitario,
+        fuente: it.fuente, confianza: it.confianza, norma: it.norma_ref, obs: it.observacion,
+      }));
+      state.hh = {};
+      items.forEach(it=>{ state.hh[it.id] = it.hh_unitaria; });
+      App.recalcCubicacion();
+    } else {
+      alert("⚠️ "+r.mensaje);
+    }
+  }catch(e){
+    alert("Error: "+e.message);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = "🤖 Generar con IA"; }
+  }
+};
+
+/* ===========================================================
+   Sincronización con backend (crear proyecto remoto)
+   =========================================================== */
+App.sincronizarConBackend = async function(){
+  if(API.mode !== "backend"){
+    const h = await API.ping();
+    if(!h){
+      alert("El backend no responde en " + API.baseUrl + "\n\n" +
+            "Levántalo con: docker-compose up\n" +
+            "O cambia la URL con: localStorage.setItem('aep_backend_url','http://...')");
+      return;
+    }
+  }
+  try{
+    const data = {
+      nombre: state.proyecto.nombre,
+      mandante: state.proyecto.mandante,
+      ubicacion: state.proyecto.ubicacion,
+      tipo: state.proyecto.tipo,
+      tension: state.proyecto.tension,
+      potencia: state.proyecto.potencia,
+      ambiente: state.proyecto.ambiente,
+      metodo_instalacion: state.proyecto.metodo,
+      normas: state.proyecto.normas,
+      config: state.config,
+    };
+    const p = await API.crearProyecto(data);
+    API.proyectoId = p.id;
+    localStorage.setItem("aep_proyecto_id", p.id);
+    alert(`✓ Proyecto sincronizado al backend (ID: ${p.id}).\n\n` +
+          "Ahora puedes:\n" +
+          "• Subir documentos para procesamiento real.\n" +
+          "• Ejecutar AgenteCubicador.\n" +
+          "• Usar chat IA con RAG documental.\n" +
+          "• Exportar a XLSX/PDF/DOCX reales desde el servidor.");
+    App.actualizarIndicadorBackend();
+  }catch(e){
+    alert("Error sincronizando: "+e.message);
+  }
+};
+
+App.testConexionBackend = async function(){
+  const h = await API.ping();
+  if(h){
+    let msg = `✓ Backend OK\n\n` +
+              `URL: ${API.baseUrl}\n` +
+              `Versión: ${h.version}\n` +
+              `Base de datos: ${h.db_ok ? "OK" : "ERROR"}\n` +
+              `Anthropic API: ${h.anthropic_configured ? "Configurada" : "NO configurada (chat IA no funcionará)"}\n` +
+              `Voyage AI (embeddings): ${h.voyage_configured ? "Configurada" : "NO configurada (RAG cae a búsqueda textual)"}`;
+    alert(msg);
+  } else {
+    alert(`✗ Backend no responde en ${API.baseUrl}\n\nLevántalo con: docker-compose up`);
+  }
+  App.actualizarIndicadorBackend();
+};
+
+App.actualizarIndicadorBackend = function(){
+  const el = $("#badgeBackend");
+  if(!el) return;
+  if(API.mode === "backend"){
+    if(API.proyectoId){
+      el.innerHTML = `<span class="badge ok">● Backend · Proyecto #${API.proyectoId}</span>`;
+    } else {
+      el.innerHTML = `<span class="badge info">● Backend conectado (proyecto sin sincronizar)</span>`;
+    }
+  } else {
+    el.innerHTML = `<span class="badge warn">● Modo demo (sin backend)</span>`;
+  }
+};
+
+/* ===========================================================
+   PRESUPUESTO
+   =========================================================== */
+App.calcTotales = function(){
+  let mat=0, mo=0;
+  state.cubicacion.forEach(it=>{
+    const cf = it.cantidad*(1+(it.factor||0)/100);
+    mat += cf*(it.pu||0);
+    const hhu = state.hh[it.id]||0;
+    mo += cf*hhu*state.config.tarifaHH;
+  });
+  const fact = state.config.factorAltura * state.config.factorDific;
+  mo = mo * fact;
+  const subtotal = mat + mo;
+  const gg = subtotal * state.config.ggPct/100;
+  const util = (subtotal+gg) * state.config.utilidadPct/100;
+  const neto = subtotal + gg + util;
+  const iva = neto * state.config.ivaPct/100;
+  const total = neto + iva;
+  return {mat, mo, fact, subtotal, gg, util, neto, iva, total};
+};
+
+App.calcTotalFinal = function(){ return App.calcTotales().total; };
+
+App.renderPresupuesto = function(){
+  const tbody = $("#tablaPresupuesto tbody");
+  tbody.innerHTML = state.cubicacion.map((it,i)=>{
+    const cf = it.cantidad*(1+(it.factor||0)/100);
+    const totMat = cf*(it.pu||0);
+    const hhu = state.hh[it.id]||0;
+    const hhTot = cf*hhu;
+    const moTot = hhTot*state.config.tarifaHH;
+    const totItem = totMat + moTot;
+    return `<tr>
+      <td>${i+1}</td><td>${it.partida}</td>
+      <td>${it.descripcion}</td><td>${it.unidad}</td>
+      <td class="num">${fmt2(cf)}</td>
+      <td class="num">${fmt(it.pu)}</td>
+      <td class="num">${fmt(totMat)}</td>
+      <td class="num"><input type="number" step="0.01" value="${hhu}" oninput="state.hh[${it.id}]=parseFloat(this.value)||0;App.renderPresupuesto();App.renderInicio()"></td>
+      <td class="num">${fmt2(hhTot)}</td>
+      <td class="num">${fmt(moTot)}</td>
+      <td class="num"><b>${fmt(totItem)}</b></td>
+    </tr>`;
+  }).join("");
+
+  const t = App.calcTotales();
+  const m = state.config.moneda;
+  $("#resumenEcon").innerHTML = `
+    <tr><td>Materiales</td><td class="num">${fmt(t.mat)} ${m}</td></tr>
+    <tr><td>Mano de obra (HH × tarifa × f.alt × f.dif)</td><td class="num">${fmt(t.mo)} ${m}</td></tr>
+    <tr><td><b>Subtotal</b></td><td class="num"><b>${fmt(t.subtotal)} ${m}</b></td></tr>
+    <tr><td>Gastos generales (${state.config.ggPct}%)</td><td class="num">${fmt(t.gg)} ${m}</td></tr>
+    <tr><td>Utilidad (${state.config.utilidadPct}%)</td><td class="num">${fmt(t.util)} ${m}</td></tr>
+    <tr><td><b>Total neto</b></td><td class="num"><b>${fmt(t.neto)} ${m}</b></td></tr>
+    <tr><td>IVA (${state.config.ivaPct}%)</td><td class="num">${fmt(t.iva)} ${m}</td></tr>
+    <tr><td style="background:#f1f5fb"><b>TOTAL CON IVA</b></td><td class="num" style="background:#f1f5fb"><b>${fmt(t.total)} ${m}</b></td></tr>`;
+
+  // Comparativo simulado
+  const base = t.neto;
+  const alts = [
+    {nom:"Base (referencia)", k:1.00, t:"100%", r:"Bajo"},
+    {nom:"Optimizada (EMT en ramales)", k:0.91, t:"95%", r:"Medio"},
+    {nom:"Económica (escalerilla)", k:0.83, t:"90%", r:"Medio"},
+    {nom:"Robusta industrial (todo bandeja c/tapa)", k:1.15, t:"110%", r:"Bajo"},
+    {nom:"Mayor estándar seguridad (RV-K LSZH)", k:1.22, t:"105%", r:"Muy bajo"},
+    {nom:"Menor tiempo montaje (prefabricado)", k:1.08, t:"85%", r:"Bajo"},
+  ];
+  $("#tablaCompAlt tbody").innerHTML = alts.map(a=>{
+    const M = t.mat * a.k;
+    const O = t.mo  * a.k;
+    return `<tr>
+      <td>${a.nom}</td>
+      <td class="num">${fmt(M)}</td>
+      <td class="num">${fmt(O)}</td>
+      <td class="num"><b>${fmt(M+O)}</b></td>
+      <td>${a.t}</td>
+      <td>${estadoBadge(a.r==="Bajo"?"Cumple":a.r==="Medio"?"Requiere validación":"No cumple").replace(/Cumple/,a.r).replace(/Requiere validación/,a.r).replace(/No cumple/,a.r)}</td>
+    </tr>`;
+  }).join("");
+};
+
+App.recalcPresupuesto = ()=> { App.renderPresupuesto(); App.renderInicio(); };
+
+/* ===========================================================
+   ESPECIFICACIONES
+   =========================================================== */
+App.renderEspec = function(){
+  const sel = $("#selEspec");
+  sel.innerHTML = state.especificaciones.map((e,i)=>`<option value="${i}">${e.partida}</option>`).join("");
+  sel.onchange = ()=>App.renderEspecOne(parseInt(sel.value));
+  App.renderEspecOne(parseInt(sel.value)||0);
+};
+
+App.renderEspecOne = function(i){
+  if(i==null||isNaN(i)) i=0;
+  const e = state.especificaciones[i];
+  if(!e){ $("#contEspec").innerHTML='<p class="note">Sin especificación seleccionada.</p>'; return; }
+  $("#contEspec").innerHTML = `
+    <div class="section-block">
+      <div class="form-row">
+        <label class="field"><b>Partida</b><input value="${e.partida}" oninput="state.especificaciones[${i}].partida=this.value;App.renderEspec()"></label>
+        <label class="field"><b>Norma de referencia</b><input value="${e.normaRef||""}" oninput="state.especificaciones[${i}].normaRef=this.value"></label>
+      </div>
+      <label class="field"><b>Contenido editable de la especificación</b>
+        <textarea rows="20" style="font-family:var(--mono);font-size:12px;" oninput="state.especificaciones[${i}].contenido=this.value">${e.contenido}</textarea>
+      </label>
+      <div class="form-row">
+        <label class="field"><b>Validado por ingeniería</b>
+          <select onchange="state.especificaciones[${i}].validado=this.value==='Sí'">
+            <option ${!e.validado?"selected":""}>No</option>
+            <option ${e.validado?"selected":""}>Sí</option>
+          </select>
+        </label>
+        <div></div>
+      </div>
+    </div>`;
+};
+
+App.addEspec = function(){
+  state.especificaciones.push({partida:"Nueva partida", contenido:"Editar contenido aquí.", normaRef:"RIC SEC ref.", validado:false});
+  App.renderEspec();
+};
+
+App.generarEspecIA = function(){
+  alert("Generación con IA: en demo offline.\n\nConecte Claude API (ver AI_CONFIG) para que el asistente genere borradores de especificaciones a partir de las bases técnicas y catálogos cargados al proyecto.");
+};
+
+/* ===========================================================
+   ALTERNATIVAS
+   =========================================================== */
+let altActiva = null;
+App.renderAlt = function(){
+  const cats = Object.keys(state.alternativas);
+  if(altActiva==null||!cats.includes(altActiva)) altActiva = cats[0];
+  $("#tabsbarAlt").innerHTML = cats.map(c=>`<button class="${c===altActiva?'active':''}" onclick="altActiva='${c}';App.renderAlt()">${c}</button>`).join("");
+
+  const arr = state.alternativas[altActiva]||[];
+  $("#contAlt").innerHTML = `
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr>
+          <th>Alternativa</th><th>Ventajas</th><th>Desventajas</th>
+          <th>Uso recomendado</th><th>Costo relativo</th><th>Riesgo</th>
+        </tr></thead>
+        <tbody>${arr.map(a=>`
+          <tr>
+            <td><b>${a.nombre}</b></td>
+            <td>${a.ventajas}</td>
+            <td>${a.desventajas}</td>
+            <td>${a.uso||""}</td>
+            <td>${a.costoRel}</td>
+            <td>${estadoBadge(a.riesgo)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <div class="alert info" style="margin-top:14px;">
+      <b>Recomendación</b>
+      La alternativa "Bandeja galvanizada 300 mm + tapa" se evalúa como óptima para este proyecto industrial minero por: (i) ambiente con polvo que justifica tapa, (ii) longitud > 200 m que penaliza EMT, (iii) capacidad de futuras ampliaciones, (iv) mantenibilidad alta.
+    </div>`;
+};
+
+/* ===========================================================
+   CONDUCTORES — CÁLCULO
+   ===========================================================
+   Tabla de referencia: capacidades aproximadas (A) para conductores
+   Cu, aislación XLPE 90°C, instalación en bandeja perforada (Método E,
+   referencial). VALIDAR contra RIC SEC vigente antes de licitar.
+*/
+const CAP_CU_XLPE = [
+  {S:1.5, I:24},{S:2.5, I:33},{S:4, I:45},{S:6, I:58},{S:10, I:80},
+  {S:16, I:107},{S:25, I:141},{S:35, I:174},{S:50, I:210},{S:70, I:269},
+  {S:95, I:325},{S:120, I:377},{S:150, I:434},{S:185, I:495},{S:240, I:583},{S:300, I:670}
+];
+const CAP_CU_PVC = CAP_CU_XLPE.map(o=>({S:o.S, I:Math.round(o.I*0.85)}));
+const CAP_AL_XLPE = CAP_CU_XLPE.map(o=>({S:o.S, I:Math.round(o.I*0.78)}));
+
+function factorTemp(t, iso){
+  // Coef. correctores referenciales por temperatura ambiente respecto de 30°C
+  const tabla = iso==="90" ?
+    [{t:10,f:1.15},{t:15,f:1.12},{t:20,f:1.08},{t:25,f:1.04},{t:30,f:1.00},{t:35,f:0.96},{t:40,f:0.91},{t:45,f:0.87},{t:50,f:0.82}] :
+    [{t:10,f:1.22},{t:15,f:1.17},{t:20,f:1.12},{t:25,f:1.06},{t:30,f:1.00},{t:35,f:0.94},{t:40,f:0.87},{t:45,f:0.79},{t:50,f:0.71}];
+  const closest = tabla.reduce((p,c)=>Math.abs(c.t-t)<Math.abs(p.t-t)?c:p);
+  return closest.f;
+}
+function factorAgrup(n){
+  // Factor de agrupamiento referencial (varios circuitos en mismo conducto/bandeja)
+  if(n<=1) return 1.00;
+  if(n<=2) return 0.80;
+  if(n<=3) return 0.70;
+  if(n<=4) return 0.65;
+  if(n<=6) return 0.57;
+  if(n<=9) return 0.50;
+  return 0.45;
+}
+
+App.calcularConductor = function(){
+  const nom = $("#cond_nom").value;
+  const sys = $("#cond_sys").value;
+  const U   = parseFloat($("#cond_U").value);
+  const P   = parseFloat($("#cond_P").value);
+  const fp  = parseFloat($("#cond_fp").value);
+  const L   = parseFloat($("#cond_L").value);
+  const T   = parseFloat($("#cond_T").value);
+  const G   = parseInt($("#cond_G").value);
+  const iso = $("#cond_iso").value;
+  const mat = $("#cond_mat").value;
+  const dvMax = parseFloat($("#cond_dv").value);
+
+  const I_dis = sys==="Trifásico" ? (P*1000)/(Math.sqrt(3)*U*fp) : (P*1000)/(U*fp);
+  const fT = factorTemp(T, iso);
+  const fG = factorAgrup(G);
+  const I_corr = I_dis / (fT * fG);
+
+  // Selección por capacidad
+  const tabla = mat==="Cobre"
+    ? (iso==="70"||iso==="75" ? CAP_CU_PVC : CAP_CU_XLPE)
+    : CAP_AL_XLPE;
+  let sel = tabla.find(o=>o.I*fT*fG >= I_dis) || tabla.at(-1);
+
+  // Verificación caída de tensión (resistividad referencial Cu=0.0175, Al=0.028 Ω·mm²/m)
+  const rho = mat==="Cobre" ? 0.0175 : 0.028;
+  function dV(S){
+    const k = sys==="Trifásico" ? Math.sqrt(3) : 2;
+    const dv = (k * rho * L * I_dis * fp) / S;
+    return dv/U*100;
+  }
+  let dvSel = dV(sel.S);
+  // Si excede dV, escalar
+  while(dvSel>dvMax && tabla.indexOf(sel)<tabla.length-1){
+    sel = tabla[tabla.indexOf(sel)+1];
+    dvSel = dV(sel.S);
+  }
+
+  $("#resCond").innerHTML = `
+    <tr><td><b>Circuito</b></td><td>${nom}</td></tr>
+    <tr><td><b>Corriente de diseño I<sub>B</sub></b></td><td>${fmt2(I_dis)} A</td></tr>
+    <tr><td><b>Factor de temperatura (${T}°C)</b></td><td>${fT.toFixed(2)}</td></tr>
+    <tr><td><b>Factor agrupamiento (${G} circ.)</b></td><td>${fG.toFixed(2)}</td></tr>
+    <tr><td><b>Corriente corregida</b></td><td>${fmt2(I_corr)} A</td></tr>
+    <tr><td><b>Sección sugerida</b></td><td><b>${sel.S} mm²</b> (${mat}, aisl. ${iso}°C)</td></tr>
+    <tr><td><b>Capacidad nominal (referencial)</b></td><td>${sel.I} A</td></tr>
+    <tr><td><b>Capacidad corregida</b></td><td>${fmt2(sel.I*fT*fG)} A</td></tr>
+    <tr><td><b>Caída de tensión calculada</b></td><td>${dvSel.toFixed(2)} % ${dvSel<=dvMax?'<span class="badge ok">OK</span>':'<span class="badge err">EXCEDE</span>'}</td></tr>
+    <tr><td><b>Conductor de protección sugerido</b></td><td>${sel.S<=16?sel.S:(sel.S<=35?16:sel.S/2)} mm²</td></tr>
+    <tr><td colspan="2" class="note">Verificación adicional: cortocircuito (I²t), neutro y canalización asociada — pendiente cargar tabla de la norma vigente.</td></tr>`;
+};
+
+/* ===========================================================
+   CANALIZACIONES — OCUPACIÓN
+   ===========================================================
+   Áreas internas referenciales de ductos (mm²):
+*/
+const DUCTOS = {
+  EMT_20:260,  EMT_25:430,  EMT_32:712,  EMT_40:1176, EMT_50:1995,
+  PVC_20:200,  PVC_25:330,  PVC_32:560,  PVC_40:920,  PVC_50:1600
+};
+// Diámetros externos referenciales por sección (mm) conductor XTU
+const D_EXT = {1.5:5.4, 2.5:6.2, 4:7.0, 6:8.2, 10:10.0, 16:11.6, 25:14.0, 35:15.4, 50:17.6, 70:20.4, 95:23.0, 120:25.6};
+
+let canRows = [
+  {S:6, tipo:"XTU Cu", D:8.2, N:3},
+  {S:4, tipo:"XTU Cu", D:7.0, N:3},
+  {S:2.5, tipo:"EVA Cu", D:6.2, N:2},
+];
+
+App.renderCanRows = function(){
+  $("#tablaCan tbody").innerHTML = canRows.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.S}</td>
+      <td>${r.tipo}</td>
+      <td class="num"><input type="number" step="0.1" value="${r.D}" oninput="canRows[${i}].D=parseFloat(this.value)||0"></td>
+      <td class="num"><input type="number" value="${r.N}" oninput="canRows[${i}].N=parseInt(this.value)||0"></td>
+      <td><button class="btn sm danger" onclick="canRows.splice(${i},1);App.renderCanRows()">×</button></td>
+    </tr>`).join("");
+};
+
+App.addCanRow = function(){
+  canRows.push({S:2.5, tipo:"XTU Cu", D:6.2, N:1});
+  App.renderCanRows();
+};
+
+App.calcularCanalizacion = function(){
+  const tipo = $("#can_tipo").value;
+  const max = parseFloat($("#can_max").value);
+  const Aducto = DUCTOS[tipo];
+  let Acond = 0;
+  let nTotal = 0;
+  canRows.forEach(r=>{
+    Acond += r.N * Math.PI*(r.D/2)**2;
+    nTotal += r.N;
+  });
+  const ocup = Acond/Aducto*100;
+  const ok = ocup<=max;
+  $("#resCan").innerHTML = `
+    <tr><td><b>Ducto seleccionado</b></td><td>${tipo.replace("_"," Ø")} mm</td></tr>
+    <tr><td><b>Área interior disponible</b></td><td>${fmt(Aducto)} mm²</td></tr>
+    <tr><td><b>N° conductores totales</b></td><td>${nTotal}</td></tr>
+    <tr><td><b>Área ocupada</b></td><td>${fmt(Acond.toFixed(1))} mm²</td></tr>
+    <tr><td><b>Porcentaje de ocupación</b></td><td><b>${ocup.toFixed(1)} %</b> ${ok?'<span class="badge ok">OK</span>':'<span class="badge err">EXCEDE '+max+'%</span>'}</td></tr>
+    <tr><td colspan="2" class="note">Para 3+ conductores el límite típico es 40% (criterio referencial). Validar contra RIC SEC vigente y método específico.</td></tr>`;
+};
+
+/* ===========================================================
+   CATÁLOGOS
+   =========================================================== */
+App.renderCatalogos = function(){
+  const q = ($("#searchCat").value||"").toLowerCase();
+  $("#tablaCat tbody").innerHTML = state.catalogos
+    .filter(c=>!q||JSON.stringify(c).toLowerCase().includes(q))
+    .map((c,i)=>{
+      const idx = state.catalogos.indexOf(c);
+      return `<tr>
+        <td>${i+1}</td>
+        <td><input value="${c.material}" oninput="state.catalogos[${idx}].material=this.value"></td>
+        <td><input value="${c.marca}" oninput="state.catalogos[${idx}].marca=this.value"></td>
+        <td><input value="${c.modelo}" oninput="state.catalogos[${idx}].modelo=this.value"></td>
+        <td><input value="${c.caract}" oninput="state.catalogos[${idx}].caract=this.value"></td>
+        <td><input value="${c.norma}" oninput="state.catalogos[${idx}].norma=this.value"></td>
+        <td><input value="${c.link}" oninput="state.catalogos[${idx}].link=this.value"></td>
+        <td><input value="${c.equiv}" oninput="state.catalogos[${idx}].equiv=this.value"></td>
+        <td>${estadoBadge(c.estado)}</td>
+        <td><button class="btn sm danger" onclick="state.catalogos.splice(${idx},1);App.renderCatalogos()">×</button></td>
+      </tr>`;
+    }).join("");
+};
+
+App.addCatalogo = function(){
+  state.catalogos.push({id:Date.now(), material:"Nuevo material", marca:"", modelo:"", caract:"", norma:"", link:"", equiv:"", estado:"Validar SEC"});
+  App.renderCatalogos();
+};
+
+/* ===========================================================
+   MATRIZ NORMATIVA
+   =========================================================== */
+App.renderNorma = function(){
+  $("#tablaNorma tbody").innerHTML = state.normativa.map((n,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><input value="${n.requisito}" oninput="state.normativa[${i}].requisito=this.value"></td>
+      <td><input value="${n.ref}" oninput="state.normativa[${i}].ref=this.value"></td>
+      <td>
+        <select onchange="state.normativa[${i}].estado=this.value;App.renderNorma();App.renderInicio()">
+          ${["Cumple","No cumple","Requiere validación","No aplica"].map(o=>`<option ${o===n.estado?"selected":""}>${o}</option>`).join("")}
+        </select>
+      </td>
+      <td><input value="${n.evidencia}" oninput="state.normativa[${i}].evidencia=this.value"></td>
+      <td><input value="${n.obs}" oninput="state.normativa[${i}].obs=this.value"></td>
+      <td><button class="btn sm danger" onclick="state.normativa.splice(${i},1);App.renderNorma();App.renderInicio()">×</button></td>
+    </tr>`).join("");
+};
+
+App.addNorma = function(){
+  state.normativa.push({id:Date.now(), requisito:"Nuevo requisito", ref:"RIC SEC ref.", estado:"Requiere validación", evidencia:"", obs:""});
+  App.renderNorma(); App.renderInicio();
+};
+
+/* ===========================================================
+   RIESGOS
+   =========================================================== */
+App.renderRiesgos = function(){
+  $("#tablaRiesgo tbody").innerHTML = state.riesgos.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>
+        <select onchange="state.riesgos[${i}].cat=this.value">
+          ${["Técnico","Normativo","Constructivo","Comercial","Seguridad","Plazo"].map(o=>`<option ${o===r.cat?"selected":""}>${o}</option>`).join("")}
+        </select>
+      </td>
+      <td><input value="${r.desc}" oninput="state.riesgos[${i}].desc=this.value"></td>
+      <td>
+        <select onchange="state.riesgos[${i}].prob=this.value">
+          ${["Baja","Media","Alta"].map(o=>`<option ${o===r.prob?"selected":""}>${o}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <select onchange="state.riesgos[${i}].impacto=this.value">
+          ${["Bajo","Medio","Alto"].map(o=>`<option ${o===r.impacto?"selected":""}>${o}</option>`).join("")}
+        </select>
+      </td>
+      <td>${estadoBadge(r.nivel)}</td>
+      <td><input value="${r.mit}" oninput="state.riesgos[${i}].mit=this.value"></td>
+      <td><input value="${r.resp}" oninput="state.riesgos[${i}].resp=this.value"></td>
+      <td><button class="btn sm danger" onclick="state.riesgos.splice(${i},1);App.renderRiesgos()">×</button></td>
+    </tr>`).join("");
+};
+
+App.addRiesgo = function(){
+  state.riesgos.push({id:Date.now(), cat:"Técnico", desc:"Nuevo riesgo", prob:"Media", impacto:"Medio", nivel:"Moderado", mit:"", resp:""});
+  App.renderRiesgos();
+};
+
+/* ===========================================================
+   CHAT IA
+   ===========================================================
+   En "modo demo" usa respuestas heurísticas. Para producción
+   real, esta función debe llamar a un BACKEND PROXY que
+   re-firme la request con la API key. Ejemplo (Node Express):
+
+     app.post("/api/chat", async (req,res)=>{
+       const r = await fetch("https://api.anthropic.com/v1/messages",{
+         method:"POST",
+         headers:{
+           "x-api-key": process.env.ANTHROPIC_API_KEY,
+           "anthropic-version":"2023-06-01",
+           "content-type":"application/json"
+         },
+         body: JSON.stringify({
+           model: "claude-sonnet-4-5",
+           max_tokens: 1500,
+           system: AI_CONFIG.systemPrompt,
+           messages: req.body.messages
+         })
+       });
+       res.json(await r.json());
+     });
+
+   Y desde el cliente se llamaría a "/api/chat" en lugar
+   de "api.anthropic.com" directamente.
+   =========================================================== */
+
+App.renderChat = function(){
+  const body = $("#chatBody");
+  body.innerHTML = chatHistory.map(m=>`
+    <div class="msg ${m.role}">
+      ${m.text}
+      ${m.meta?`<span class="meta">${m.meta}</span>`:""}
+    </div>`).join("");
+  body.scrollTop = body.scrollHeight;
+};
+
+App.suggestChat = function(t){
+  $("#chatInput").value = t;
+  $("#chatInput").focus();
+};
+
+App.sendChat = async function(){
+  const inp = $("#chatInput");
+  const t = inp.value.trim();
+  if(!t) return;
+  inp.value = "";
+  chatHistory.push({role:"user", text:t});
+  App.renderChat();
+
+  // Indicador "escribiendo"
+  chatHistory.push({role:"ai", text:"Pensando", meta:"typing"});
+  App.renderChat();
+
+  let respuesta;
+  const provider = $("#aiProvider").value;
+
+  // PRIORIDAD 1: backend conectado y proyecto sincronizado
+  if(API.mode === "backend" && API.proyectoId){
+    try{
+      const r = await API.enviarChat(API.proyectoId, t, "general");
+      respuesta = r.answer;
+      if(r.fuentes && r.fuentes.length){
+        respuesta += "\n\n📎 Fuentes consultadas:\n" + r.fuentes.map(f=>
+          `• ${f.documento_nombre}${f.pagina?` (p. ${f.pagina})`:""}`).join("\n");
+      }
+      chatHistory.pop();
+      chatHistory.push({role:"ai", text:respuesta, meta:`backend · agente RIC SEC · ${r.tokens_in}+${r.tokens_out} tokens`});
+      App.renderChat();
+      return;
+    }catch(e){
+      console.warn("Chat backend falló, cayendo a demo:", e);
+    }
+  }
+
+  if(provider==="claude" && AI_CONFIG.apiKey){
+    try{
+      // ⚠️ Solo funciona si tienes proxy backend. NO incluir key aquí.
+      const r = await fetch(AI_CONFIG.endpoint, {
+        method:"POST",
+        headers:{
+          "x-api-key": AI_CONFIG.apiKey,
+          "anthropic-version":"2023-06-01",
+          "content-type":"application/json",
+          "anthropic-dangerous-direct-browser-access":"true" // solo para pruebas
+        },
+        body: JSON.stringify({
+          model: AI_CONFIG.model,
+          max_tokens: AI_CONFIG.maxTokens,
+          system: AI_CONFIG.systemPrompt,
+          messages: chatHistory
+            .filter(m=>m.meta!=="typing")
+            .map(m=>({role:m.role==="ai"?"assistant":"user", content:m.text}))
+        })
+      });
+      const j = await r.json();
+      respuesta = j.content?.[0]?.text || "Sin respuesta del modelo.";
+    }catch(err){
+      respuesta = "⚠️ Error de conexión con Claude API. Revisa AI_CONFIG y CORS (idealmente usa un proxy backend).\n\nDetalle: "+err.message;
+    }
+  } else {
+    respuesta = App.respuestaDemo(t);
+  }
+
+  // Reemplaza "typing"
+  chatHistory.pop();
+  chatHistory.push({role:"ai", text:respuesta, meta: provider==="claude"?"claude-sonnet · RIC SEC system prompt":"demo · heurística local"});
+  App.renderChat();
+};
+
+App.respuestaDemo = function(q){
+  const Q = q.toLowerCase();
+  if(/canalización|emt|bandeja|escalerilla|ducto/.test(Q)){
+    return `Para canalizaciones en ambiente industrial con polvo, la práctica habitual es:
+
+• Tramos principales → bandeja portacable galvanizada en caliente, con tapa en zonas expuestas a daño mecánico o caída de objetos.
+• Ramales a equipos → EMT galvanizada con curvas largas y cajas de paso cada ≤ 12 m.
+• Salida a exterior → ducto subterráneo PVC con cámaras de inspección.
+
+Accesorios que SIEMPRE deben cubicarse junto al ducto principal:
+  – Curvas (45° / 90°), coplas, reducciones, tees.
+  – Soportación: ménsulas, varillas roscadas, riostras sísmicas.
+  – Cajas de paso, prensas estopa, sellos.
+  – Tapas (zonas expuestas), puentes equipotenciales a PAT.
+  – Fijaciones: abrazaderas, tarugos, anclajes químicos para hormigón.
+
+📎 Referencia normativa: criterio general de RIC SEC y IEC 61537. <u>Validar artículo exacto contra el RIC vigente cargado al proyecto</u>.`;
+  }
+  if(/conductor|sección|caída|ampac/.test(Q)){
+    return `Para selección de conductores en B.T., el procedimiento es:
+
+1. Corriente de diseño I_B = P / (√3 · U · cos φ) en trifásico.
+2. Aplicar factor de temperatura f_T (según ambiente vs 30°C).
+3. Aplicar factor de agrupamiento f_G según N° de circuitos juntos.
+4. Corriente corregida I_z = I_B / (f_T · f_G).
+5. Elegir sección S de la tabla del RIC SEC para el método de instalación.
+6. Verificar caída de tensión ≤ 3% (alimentadores) o ≤ 5% total.
+7. Verificar comportamiento ante cortocircuito (I²t ≤ k²·S²).
+8. Dimensionar conductor de protección (regla S_PE ≥ S/2 hasta cierto valor).
+
+Accesorios obligatorios para cubicar junto al conductor:
+  – Terminales prensables, conectores, prensaestopas.
+  – Identificación (anillos, cintas, placas grabadas).
+  – Amarras, cinta aisladora, soportación auxiliar.
+  – Pruebas: continuidad, megger 1000V, caída bajo carga.
+
+Puedes usar la pestaña <b>Conductores</b> para calcular en línea.`;
+  }
+  if(/tablero|tgm|protección/.test(Q)){
+    return `Para el tablero TGM se debe especificar:
+
+• Gabinete metálico autosoportado, espesor ≥ 1.5 mm, IP54 ambiente industrial.
+• Barras Cu electrolítico dimensionadas para corriente máxima del proyecto.
+• Interruptor principal coordinado con la Icu del nivel de falla.
+• Protecciones secundarias con curvas seleccionadas (B/C/D según tipo de carga).
+• Diferenciales 30 mA en circuitos terminales con riesgo de contacto directo.
+• Bornera PAT independiente, equipotencializada al gabinete.
+• Rotulación en español, esquema unilineal en bolsillo.
+
+Cubicación complementaria (no olvidar):
+  – Canaletas plásticas internas, peines de fase, bornes, marcadores.
+  – Terminales preaislados, prensas para cables, ferretería de montaje.
+  – Pruebas: megger, termografía, par de apriete, protocolo SEC TE-1.
+
+Norma de referencia: IEC 61439-1/-2 y DS N°92 SEC para certificación.`;
+  }
+  if(/puesta a tierra|pat|tierra|electrodo/.test(Q)){
+    return `Sistema de puesta a tierra industrial — componentes mínimos:
+
+• Conductor Cu desnudo ≥ 35 mm² para anillo principal.
+• Electrodos Cu-Cu 5/8" x 2400 mm distribuidos según geometría.
+• Soldadura exotérmica en uniones permanentes (cable-cable, cable-barra, cable-electrodo).
+• Cámaras de inspección hormigón con tapa identificada.
+• Barra de tierra principal en sala eléctrica.
+• Equipotencialización de bandejas, gabinetes, estructuras metálicas, tuberías.
+
+Ensayos y protocolos:
+  – Resistividad del terreno (método Wenner) ANTES del diseño.
+  – Resistencia de la malla con telurómetro (caída de potencial).
+  – Continuidad de conductores de protección.
+  – Documento de protocolo SEC.
+
+Criterio típico ≤ 5 Ω (validar con criterio del mandante y RIC SEC vigente).`;
+  }
+  if(/normativa|ric|sec/.test(Q)){
+    return `La normativa eléctrica chilena de baja tensión está estructurada en torno a los Pliegos Técnicos RIC publicados por la SEC. Existen varios pliegos temáticos (instalaciones de consumo, canalizaciones, conductores, puesta a tierra, protecciones, etc.).
+
+⚠️ Importante: <b>no me hago cargo de citar artículos específicos sin tener cargado el documento normativo al proyecto.</b> Lo que sí puedo:
+
+• Estructurar la matriz de cumplimiento por requisito (canalización, conductor, protección, PAT, rotulación, pruebas).
+• Marcar cada ítem como "Cumple / No cumple / Requiere validación".
+• Pedirte que subas el documento RIC vigente y luego complementar referencias precisas.
+
+¿Quieres que armemos la matriz por bloques temáticos?`;
+  }
+  if(/presupuesto|costo|hh|valor/.test(Q)){
+    return `El presupuesto del proyecto se está calculando con:
+
+• Materiales = Σ (cantidad × factor de pérdida × precio unitario).
+• Mano de obra = Σ (HH unitarias × cantidad × tarifa) × factor altura × factor dificultad.
+• Subtotal + GG (${state.config.ggPct}%) + Utilidad (${state.config.utilidadPct}%) = Neto.
+• Neto × IVA (${state.config.ivaPct}%) = Total con IVA.
+
+Valor actual con el demo: <b>${fmt(App.calcTotalFinal())} ${state.config.moneda}</b>.
+
+Tip: en la pestaña Presupuesto puedes ajustar HH unitarias por ítem y la comparación de 6 alternativas se actualiza sola.`;
+  }
+  return `Recibido. En modo demo respondo con heurísticas; cuando conectes Claude API obtendrás análisis profundo del proyecto activo (cubicación, presupuesto, normativa, alternativas).
+
+Tu consulta: "${q}"
+
+Sugerencias rápidas:
+• Para selección de conductores → pestaña Conductores con cálculo en línea.
+• Para verificar ocupación de ducto → pestaña Canalizaciones.
+• Para comparar alternativas → pestaña Alternativas.
+• Para revisar cumplimiento → pestaña Matriz normativa.
+
+¿En qué quieres que profundice?`;
+};
+
+/* ===========================================================
+   EXPORTABLES
+   =========================================================== */
+App.exportarBackend = async function(formato){
+  if(API.mode !== "backend" || !API.proyectoId){
+    alert("Esta función requiere backend conectado y proyecto sincronizado.\n\n" +
+          "Pasos:\n" +
+          "1. docker-compose up\n" +
+          "2. Pestaña Inicio → '☁️ Sincronizar con backend'.\n" +
+          "3. Reintenta la exportación.");
+    return;
+  }
+  try{
+    await API.exportar(API.proyectoId, formato);
+  }catch(e){
+    alert("Error exportando: "+e.message);
+  }
+};
+
+App.exportJSON = function(){
+  const data = {state, chatHistory, exportedAt: new Date().toISOString(), version:"0.1"};
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `proyecto_electrico_${(state.proyecto.nombre||"sin_nombre").replace(/\s+/g,"_")}.json`;
+  a.click();
+};
+
+App.importJSON = function(){
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json";
+  inp.onchange = e=>{
+    const r = new FileReader();
+    r.onload = ev=>{
+      try{
+        const d = JSON.parse(ev.target.result);
+        if(d.state) state = d.state;
+        if(d.chatHistory) chatHistory = d.chatHistory;
+        App.refreshAll();
+        alert("Proyecto importado correctamente.");
+      }catch(err){ alert("JSON inválido: "+err.message); }
+    };
+    r.readAsText(e.target.files[0]);
+  };
+  inp.click();
+};
+
+App.exportCSV = function(seccion){
+  let rows = [], filename = seccion+".csv";
+  if(seccion==="cubicacion"){
+    rows.push(["Ítem","Partida","Sistema","Área","Descripción","Unidad","Cantidad","Factor%","Cant. final","PU","Total","Fuente","Confianza","Norma","Observación"]);
+    state.cubicacion.forEach((it,i)=>{
+      const cf = it.cantidad*(1+(it.factor||0)/100);
+      rows.push([i+1,it.partida,it.sistema,it.area,it.descripcion,it.unidad,it.cantidad,it.factor,cf.toFixed(2),it.pu,Math.round(cf*it.pu),it.fuente,it.confianza,it.norma,it.obs]);
+    });
+  } else if(seccion==="presupuesto"){
+    rows.push(["Ítem","Partida","Descripción","Unidad","Cant.","PU","Total mat.","HH/un","HH tot.","M.O.","Total ítem"]);
+    state.cubicacion.forEach((it,i)=>{
+      const cf = it.cantidad*(1+(it.factor||0)/100);
+      const totMat = cf*(it.pu||0);
+      const hhu = state.hh[it.id]||0;
+      const hhTot = cf*hhu;
+      const mo = hhTot*state.config.tarifaHH;
+      rows.push([i+1,it.partida,it.descripcion,it.unidad,cf.toFixed(2),it.pu,Math.round(totMat),hhu,hhTot.toFixed(2),Math.round(mo),Math.round(totMat+mo)]);
+    });
+  } else if(seccion==="normativa"){
+    rows.push(["#","Requisito","Norma","Estado","Evidencia","Observación"]);
+    state.normativa.forEach((n,i)=>rows.push([i+1,n.requisito,n.ref,n.estado,n.evidencia,n.obs]));
+  } else if(seccion==="catalogos"){
+    rows.push(["#","Material","Marca","Modelo","Características","Norma","Catálogo","Equivalentes","Estado"]);
+    state.catalogos.forEach((c,i)=>rows.push([i+1,c.material,c.marca,c.modelo,c.caract,c.norma,c.link,c.equiv,c.estado]));
+  }
+  const csv = rows.map(r=>r.map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(";")).join("\n");
+  const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+};
+
+App.exportTabla = function(idTabla, titulo){
+  const w = window.open("","_blank");
+  w.document.write(`<html><head><title>${titulo}</title>
+    <style>
+      body{font-family:Arial;font-size:11px;padding:20px;}
+      h1{font-size:16px;color:#0f2c4a;}
+      table{width:100%;border-collapse:collapse;font-size:10.5px;}
+      th{background:#0f2c4a;color:#fff;padding:5px 7px;border:1px solid #555;text-align:left;}
+      td{padding:4px 7px;border:1px solid #ccc;vertical-align:top;}
+      tr:nth-child(even) td{background:#f5f5f5;}
+      .meta{color:#666;font-size:10px;margin:10px 0;}
+    </style></head><body>
+    <h1>${titulo} — ${state.proyecto.nombre}</h1>
+    <div class="meta">Mandante: ${state.proyecto.mandante} · Ubicación: ${state.proyecto.ubicacion} · ${new Date().toLocaleString("es-CL")}</div>
+    ${document.getElementById(idTabla).outerHTML}
+    <script>window.print()<\/script>
+    </body></html>`);
+};
+
+App.exportEspecMD = function(){
+  let md = `# Especificaciones técnicas eléctricas — ${state.proyecto.nombre}\n\n`;
+  md += `**Mandante:** ${state.proyecto.mandante}  \n**Ubicación:** ${state.proyecto.ubicacion}  \n**Fecha:** ${state.proyecto.fecha}\n\n---\n\n`;
+  state.especificaciones.forEach(e=>{
+    md += `## ${e.partida}\n_Norma: ${e.normaRef}_\n\n${e.contenido}\n\n---\n\n`;
+  });
+  const blob = new Blob([md], {type:"text/markdown;charset=utf-8"});
+  const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="especificaciones.md"; a.click();
+};
+
+App.exportEspecPrint = function(){
+  const w = window.open("","_blank");
+  let html = `<html><head><title>EETT - ${state.proyecto.nombre}</title>
+    <style>
+      body{font-family:Georgia,serif;max-width:780px;margin:40px auto;padding:0 20px;font-size:13px;line-height:1.5;color:#222;}
+      h1{color:#0f2c4a;border-bottom:2px solid #0f2c4a;padding-bottom:8px;}
+      h2{color:#0f2c4a;margin-top:30px;}
+      em{color:#666;}
+      pre{white-space:pre-wrap;font-family:Georgia,serif;font-size:13px;}
+      .meta{color:#666;font-size:12px;}
+    </style></head><body>
+    <h1>Especificaciones técnicas eléctricas</h1>
+    <p class="meta"><b>Proyecto:</b> ${state.proyecto.nombre}<br>
+    <b>Mandante:</b> ${state.proyecto.mandante}<br>
+    <b>Ubicación:</b> ${state.proyecto.ubicacion}<br>
+    <b>Fecha:</b> ${state.proyecto.fecha}</p>`;
+  state.especificaciones.forEach(e=>{
+    html += `<h2>${e.partida}</h2><em>Norma: ${e.normaRef}</em><pre>${e.contenido}</pre>`;
+  });
+  html += `<script>window.print()<\/script></body></html>`;
+  w.document.write(html);
+};
+
+/* ===========================================================
+   NUEVO PROYECTO (estructura vacía)
+   ===========================================================
+   Genera un proyecto en blanco preservando las plantillas
+   de especificaciones técnicas y catálogos sugeridos (que son
+   reutilizables), pero limpiando todo lo demás. El usuario
+   elige el tipo de proyecto y datos básicos al inicio.
+   =========================================================== */
+let tipoNuevoSeleccionado = "Industria";
+
+App.abrirModalNuevo = function(){
+  // Reset selecciones previas
+  $$("#tipoGrid .tipo-card").forEach(c=>c.classList.remove("selected"));
+  const def = document.querySelector('#tipoGrid .tipo-card[data-tipo="Industria"]');
+  if(def) def.classList.add("selected");
+  tipoNuevoSeleccionado = "Industria";
+
+  $("#np_nombre").value = "";
+  $("#np_mandante").value = "";
+  $("#np_ubicacion").value = "";
+  $("#np_tension").value = 400;
+  $("#np_potencia").value = "";
+  $("#np_ambiente").value = "Interior seco";
+
+  $("#modalNuevo").classList.add("show");
+};
+
+App.cerrarModalNuevo = function(){
+  $("#modalNuevo").classList.remove("show");
+};
+
+App.crearProyecto = function(){
+  const nombre = $("#np_nombre").value.trim();
+  if(!nombre){
+    alert("Ingresa al menos el nombre del proyecto antes de crearlo.");
+    $("#np_nombre").focus();
+    return;
+  }
+  if(!confirm("¿Crear un nuevo proyecto vacío?\n\nSe perderán los cambios no exportados del proyecto actual.")){
+    return;
+  }
+
+  // Plantilla de proyecto vacío
+  state = {
+    proyecto: {
+      nombre: nombre,
+      mandante: $("#np_mandante").value.trim() || "—",
+      ubicacion: $("#np_ubicacion").value.trim() || "—",
+      tipo: tipoNuevoSeleccionado,
+      disciplina: "Eléctrica B.T.",
+      fecha: new Date().toISOString().slice(0,10),
+      tension: parseFloat($("#np_tension").value) || 400,
+      freq: 50,
+      potencia: parseFloat($("#np_potencia").value) || 0,
+      corriente: 0,
+      carga: "Mixta",
+      ambiente: $("#np_ambiente").value,
+      tempAmb: 30,
+      metodo: "Bandeja perforada",
+      marcas: "",
+      restricciones: "",
+      normas: "RIC SEC (validar versión vigente), NCh Elec, IEC 60364"
+    },
+    config: {
+      moneda: "CLP",
+      ivaPct: 19,
+      tarifaHH: 18500,
+      factorPerdida: 5,
+      ggPct: 12,
+      utilidadPct: 10,
+      factorAltura: 1.0,
+      factorDific: 1.0
+    },
+    documentos: [],
+    cubicacion: [],
+    hh: {},
+    // Mantener plantillas reutilizables (alternativas, especificaciones, catálogos)
+    alternativas: JSON.parse(JSON.stringify(DEMO_DATA.alternativas)),
+    catalogos: JSON.parse(JSON.stringify(DEMO_DATA.catalogos)),
+    especificaciones: JSON.parse(JSON.stringify(DEMO_DATA.especificaciones)),
+    // Matriz normativa con requisitos base (estado todo "Requiere validación")
+    normativa: JSON.parse(JSON.stringify(DEMO_DATA.normativa)).map(n=>({
+      ...n, estado:"Requiere validación", evidencia:"", obs:""
+    })),
+    riesgos: []
+  };
+
+  // Reset chat
+  chatHistory = [{
+    role:"ai",
+    text:`Proyecto creado: "${nombre}".\n\nTipo: ${tipoNuevoSeleccionado}\nMandante: ${state.proyecto.mandante}\n\nPróximos pasos sugeridos:\n1. Subir planos, bases técnicas y catálogos en "Carga de documentos".\n2. Completar parámetros eléctricos en "Datos del proyecto".\n3. Comenzar la cubicación con + Agregar ítem.\n4. Revisar matriz normativa contra el RIC SEC vigente.\n\n¿En qué te ayudo primero?`,
+    meta:"demo · proyecto nuevo"
+  }];
+
+  App.cerrarModalNuevo();
+  App.refreshAll();
+  App.switchTab("datos");
+
+  // Feedback visual
+  $("#btnNuevo").textContent = "✓ Proyecto creado";
+  setTimeout(()=>$("#btnNuevo").textContent="📄 Nuevo proyecto", 1800);
+};
+
+// Selección de tipo en el modal
+document.addEventListener("click", e=>{
+  const c = e.target.closest("#tipoGrid .tipo-card");
+  if(c){
+    $$("#tipoGrid .tipo-card").forEach(x=>x.classList.remove("selected"));
+    c.classList.add("selected");
+    tipoNuevoSeleccionado = c.dataset.tipo;
+  }
+});
+
+// Cerrar modal con clic fuera o tecla Esc
+$("#modalNuevo").addEventListener("click", e=>{
+  if(e.target.id==="modalNuevo") App.cerrarModalNuevo();
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") App.cerrarModalNuevo();
+});
+
+/* ===========================================================
+   GUARDAR / CARGAR
+   =========================================================== */
+const LS_KEY = "aep_electrico_v01";
+$("#btnGuardar").onclick = ()=>{
+  localStorage.setItem(LS_KEY, JSON.stringify({state, chatHistory}));
+  $("#btnGuardar").textContent = "✓ Guardado";
+  setTimeout(()=>$("#btnGuardar").textContent="💾 Guardar", 1500);
+};
+$("#btnCargar").onclick = ()=>{
+  const d = localStorage.getItem(LS_KEY);
+  if(!d){ alert("No hay proyecto guardado en este navegador."); return; }
+  try{
+    const o = JSON.parse(d);
+    state = o.state; chatHistory = o.chatHistory||CHAT_INIT;
+    App.refreshAll();
+    alert("Proyecto cargado desde LocalStorage.");
+  }catch(e){ alert("Error al cargar: "+e.message); }
+};
+$("#btnReset").onclick = ()=>{
+  if(!confirm("¿Restaurar datos demo? Se perderán los cambios no exportados.")) return;
+  state = JSON.parse(JSON.stringify(DEMO_DATA));
+  chatHistory = JSON.parse(JSON.stringify(CHAT_INIT));
+  App.refreshAll();
+};
+$("#btnNuevo").onclick = App.abrirModalNuevo;
+
+/* ===========================================================
+   DROPZONE
+   =========================================================== */
+const dz = $("#dropzone");
+dz.onclick = ()=>$("#fileInput").click();
+$("#fileInput").onchange = e=>App.handleFiles(e.target.files);
+dz.ondragover = e=>{e.preventDefault();dz.classList.add("drag");};
+dz.ondragleave = ()=>dz.classList.remove("drag");
+dz.ondrop = e=>{e.preventDefault();dz.classList.remove("drag");App.handleFiles(e.dataTransfer.files);};
+$("#btnAddDocoDemo").onclick = App.addDocoDemo;
+
+/* ===========================================================
+   REFRESH GLOBAL
+   =========================================================== */
+App.refreshAll = function(){
+  App.bindForms();
+  App.updateCrumb();
+  App.renderInicio();
+  App.renderDocs();
+  App.renderAnalisis();
+  App.renderCubicacion();
+  App.renderPresupuesto();
+  App.renderEspec();
+  App.renderAlt();
+  App.renderCanRows();
+  App.renderCatalogos();
+  App.renderNorma();
+  App.renderRiesgos();
+  App.renderChat();
+};
+
+/* ===========================================================
+   INIT
+   =========================================================== */
+document.addEventListener("DOMContentLoaded", ()=>{
+  App.refreshAll();
+});
+// Init inmediato porque el script va al final
+App.refreshAll();
+
+// Detectar backend asincrónicamente sin bloquear UI
+(async ()=>{
+  // Recuperar último proyecto remoto
+  const savedPid = localStorage.getItem("aep_proyecto_id");
+  if(savedPid) API.proyectoId = parseInt(savedPid);
+  await API.ping();
+  App.actualizarIndicadorBackend();
+})();
+</script>
+
+</body>
+</html>

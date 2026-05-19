@@ -31,3 +31,8 @@ Thumbs.db
 # Tests
 coverage/
 .nyc_output/
+
+# Claude / Cowork (metadata local del asistente, no del proyecto)
+.claude/
+CLAUDE.md
+

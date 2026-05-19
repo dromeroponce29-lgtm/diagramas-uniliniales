@@ -1,0 +1,47 @@
+#!/bin/bash
+# Lanzador de la app Diagramas Unilineales.
+# El .app vive en /Users/mac/Projects/diagramas-uniliniales/
+# El proyecto real está en la carpeta del .app (un nivel arriba).
+
+set -e
+
+# Carpeta del proyecto = carpeta que contiene el .app
+APP_PATH="$(cd "$(dirname "$0")/../.." && pwd)"     # …/Diagramas Unilineales.app
+PROYECTO_DIR="$(cd "$APP_PATH/.." && pwd)"          # /Users/mac/Projects/diagramas-uniliniales
+
+# Asegúrate de que node/npm estén en PATH (Homebrew, nvm, etc.)
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/*/bin:$PATH"
+
+# Comando completo que se va a ejecutar en una ventana de Terminal
+read -r -d '' CMD <<EOF || true
+cd "$PROYECTO_DIR"
+clear
+echo "==============================================="
+echo "  Diagramas Unilineales — arrancando…"
+echo "==============================================="
+echo ""
+if [ ! -d "node_modules" ]; then
+  echo "→ Primera ejecución: instalando dependencias (1-2 min)…"
+  npm install || { echo ""; echo "✗ Falló npm install"; read -p "Enter para cerrar…"; exit 1; }
+fi
+if [ ! -f "apps/servidor/.env" ]; then
+  echo "ATENCIÓN: falta apps/servidor/.env. Cópialo desde .env.example."
+  read -p "Enter para cerrar…"
+  exit 1
+fi
+( sleep 5 && open "http://localhost:5173" ) &
+echo "→ Iniciando backend (:3001) + frontend (:5173)…"
+echo "→ El navegador se abrirá en unos segundos."
+echo ""
+echo "Para DETENER: Ctrl+C en esta ventana."
+echo ""
+npm run dev
+EOF
+
+# Abre Terminal y ejecuta el comando ahí (para que el usuario vea los logs)
+osascript <<APPLESCRIPT
+tell application "Terminal"
+    activate
+    do script "$CMD"
+end tell
+APPLESCRIPT
