@@ -36,3 +36,15 @@ coverage/
 .claude/
 CLAUDE.md
 
+# Archivos temporales de Vite/Vitest
+**/*.timestamp-*.mjs
+apps/web/dist-new/
+
+# Archivos auxiliares generados por sesiones (inventarios, listados, etc.)
+ARCHIVOS_*.txt
+INVENTARIO_*.txt
+POSIBLES_*.txt
+
+# Deploy temporales
+deploy-netlify/
+

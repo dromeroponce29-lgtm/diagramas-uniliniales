@@ -32,4 +32,44 @@ body {
   body[data-print-mode="unilineal-ric"] {
     background: white !important;
   }
+
+  /* Modo impresión por módulo individual. Se activa con
+     body[data-print-mode="modulo"] y body[data-print-modulo="<nombre>"]
+     desde el botón "🖨️ Imprimir esta sección" de cada módulo.
+     Oculta todo lo que no sea el módulo objetivo. */
+  body[data-print-mode="modulo"] .imprimir-oculto {
+    display: none !important;
+  }
+  body[data-print-mode="modulo"] {
+    background: white !important;
+  }
+  /* Por defecto ocultamos todos los módulos. */
+  body[data-print-mode="modulo"] .imprimir-modulo {
+    display: none !important;
+  }
+  /* Mostramos solo el módulo activo (selector dinámico inyectado en runtime). */
+
+  /* Modo informe completo: A4, márgenes 15mm, fuente serif.
+     Activado con body[data-print-mode="informe-completo"]. */
+  body[data-print-mode="informe-completo"] .imprimir-oculto {
+    display: none !important;
+  }
+  body[data-print-mode="informe-completo"] {
+    background: white !important;
+    font-family: 'Georgia', 'Times New Roman', serif !important;
+    color: black !important;
+  }
+  body[data-print-mode="informe-completo"] .informe-seccion {
+    page-break-before: always;
+    break-before: page;
+  }
+  body[data-print-mode="informe-completo"] .informe-seccion:first-child {
+    page-break-before: auto;
+    break-before: auto;
+  }
+}
+
+/* Vista informe completo en pantalla: tipografía y maquetación serif. */
+.vista-informe {
+  font-family: 'Georgia', 'Times New Roman', serif;
 }

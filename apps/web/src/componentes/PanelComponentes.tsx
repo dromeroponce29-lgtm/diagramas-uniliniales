@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { Tablero, ComponenteReconciliado } from '@tipos/modelo';
 import { useTableroStore } from '../estado/tableroStore.js';
 import { ResolverDiscrepancia } from './ResolverDiscrepancia.js';
@@ -14,7 +15,25 @@ interface Props {
 export function PanelComponentes({ tablero, clienteSlug, tableroSlug, componenteResaltadoId }: Props) {
   const { actualizarComponente } = useTableroStore();
   const [resolviendo, setResolviendo] = useState<ComponenteReconciliado | null>(null);
-  const [tab, setTab] = useState<'componentes' | 'circuitos'>('componentes');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subtabUrl = searchParams.get('subtab');
+  const [tab, setTab] = useState<'componentes' | 'circuitos'>(
+    subtabUrl === 'circuitos' ? 'circuitos' : 'componentes'
+  );
+
+  // Si el URL trae ?subtab=circuitos al montar o cambiar, sincronizamos.
+  useEffect(() => {
+    if (subtabUrl === 'circuitos' && tab !== 'circuitos') setTab('circuitos');
+    if (subtabUrl === 'componentes' && tab !== 'componentes') setTab('componentes');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtabUrl]);
+
+  function cambiarTab(t: 'componentes' | 'circuitos') {
+    setTab(t);
+    const next = new URLSearchParams(searchParams);
+    next.set('subtab', t);
+    setSearchParams(next, { replace: true });
+  }
 
   return (
     <section className="bg-white rounded-lg shadow flex flex-col h-full">
@@ -26,11 +45,11 @@ export function PanelComponentes({ tablero, clienteSlug, tableroSlug, componente
           <div className="ml-auto flex border rounded overflow-hidden text-xs">
             <button
               className={`px-2 py-1 ${tab === 'componentes' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'}`}
-              onClick={() => setTab('componentes')}
+              onClick={() => cambiarTab('componentes')}
             >Componentes</button>
             <button
               className={`px-2 py-1 ${tab === 'circuitos' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'}`}
-              onClick={() => setTab('circuitos')}
+              onClick={() => cambiarTab('circuitos')}
             >Circuitos</button>
           </div>
         </div>

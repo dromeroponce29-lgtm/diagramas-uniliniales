@@ -47,12 +47,15 @@ export function TablaCircuitos({ tablero, clienteSlug, tableroSlug }: Props) {
   function agregarFila() {
     const automaticos = tablero.componentes.filter(c => c.tipo === 'interruptor-automatico');
     const primerAuto = automaticos[0];
-    if (!primerAuto) return;
+    // Si no hay automáticos detectados aún, igualmente permitimos crear el
+    // circuito con proteccionComponenteId vacío para que el usuario pueda
+    // ir poblando el cuadro de cargas manualmente y reasignar protección
+    // cuando se detecten/ingresen componentes.
     const nuevoNumero = (filasMostrar.at(-1)?.numero ?? 0) + 1;
     void guardar([...filasMostrar, {
       id: ulid(),
       numero: nuevoNumero,
-      proteccionComponenteId: primerAuto.id,
+      proteccionComponenteId: primerAuto?.id ?? '',
       destino: 'pendiente',
       uso: 'pendiente',
       procedencia: { fuente: 'manual', confianza: 'baja' }
@@ -93,6 +96,7 @@ export function TablaCircuitos({ tablero, clienteSlug, tableroSlug }: Props) {
                   onChange={e => actualizarFila(c.id, { proteccionComponenteId: e.target.value })}
                   className="border rounded px-1"
                 >
+                  <option value="">— sin asignar —</option>
                   {automaticos.map(a => (
                     <option key={a.id} value={a.id}>
                       {`C${a.calibreA ?? '?'} (${a.id.slice(-4)})`}
@@ -155,12 +159,18 @@ export function TablaCircuitos({ tablero, clienteSlug, tableroSlug }: Props) {
       </table>
       <button
         onClick={agregarFila}
-        className="text-sm text-blue-600 hover:underline"
-        disabled={automaticos.length === 0}
+        className="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
       >+ Agregar circuito</button>
       {filasMostrar.length === 0 && (
         <p className="text-sm text-slate-500">
-          Aún no hay automáticos detectados. Sube fotos del tablero o agrega componentes manualmente.
+          Aún no hay circuitos. Haz clic en “+ Agregar circuito” para crear
+          uno manualmente, o sube fotos del tablero para extraerlos automáticamente.
+        </p>
+      )}
+      {filasMostrar.length > 0 && automaticos.length === 0 && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+          Aún no hay automáticos detectados. Puedes seguir editando los
+          circuitos y asignar protección cuando se ingresen componentes.
         </p>
       )}
     </div>

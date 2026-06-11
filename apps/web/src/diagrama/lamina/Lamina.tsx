@@ -16,6 +16,7 @@ import { CuadroDeSimbologia } from './CuadroDeSimbologia.js';
 import { Vineta } from './Vineta.js';
 import { FotoComparacion } from './FotoComparacion.js';
 import { ChatRefinador } from './ChatRefinador.js';
+import { imprimirModulo, clasesBotonImprimir } from '../../hooks/imprimirModulo.js';
 
 interface Props {
   tablero: Tablero;
@@ -60,7 +61,7 @@ export function Lamina({ tablero, cliente, clienteSlug, tableroSlug, onClicCompo
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end gap-2 imprimir-unilineal-oculto">
+      <div className="flex justify-end gap-2 imprimir-unilineal-oculto imprimir-oculto">
         <button
           onClick={imprimirUnilinealRIC}
           className="text-sm px-3 py-1 border border-blue-700 text-blue-700 rounded hover:bg-blue-50"
@@ -75,8 +76,17 @@ export function Lamina({ tablero, cliente, clienteSlug, tableroSlug, onClicCompo
 
       <NotasGenerales tablero={tablero} />
 
-      <div className="bg-white border rounded h-[600px]">
-        <DiagramaSVG tablero={tablero} cliente={cliente} onClicComponente={onClicComponente} />
+      <div className="imprimir-modulo imprimir-modulo-diagrama bg-white border rounded">
+        <div className="flex items-center justify-end p-2 imprimir-oculto">
+          <button
+            onClick={() => imprimirModulo('diagrama', true)}
+            className={clasesBotonImprimir()}
+            title="Imprime solo el diagrama unilineal."
+          >🖨️ Imprimir esta sección</button>
+        </div>
+        <div className="h-[600px]">
+          <DiagramaSVG tablero={tablero} cliente={cliente} onClicComponente={onClicComponente} />
+        </div>
       </div>
 
       <div className="grid grid-cols-12 gap-3 print:break-after-page">

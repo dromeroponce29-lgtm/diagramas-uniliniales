@@ -51,14 +51,21 @@ export function WorkspaceTablero() {
   return (
     <div className="min-h-full flex flex-col">
       <BarraCompletitud tablero={tablero} />
-      <div className="px-6 py-2 flex items-center justify-between">
+      <div className="px-6 py-2 flex items-center justify-between gap-3 flex-wrap">
         <Link to="/clientes" className="text-sm text-blue-600 hover:underline">← Lista de clientes</Link>
-        <a
-          href={`/api/clientes/${clienteSlug}/tableros/${tableroSlug}/exportar.xlsx`}
-          className="text-sm px-3 py-1 border rounded text-blue-700 hover:bg-blue-50"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Exportar a Excel ↓</a>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/clientes/${clienteSlug}/tableros/${tableroSlug}/informe`}
+            className="text-sm px-4 py-2 bg-emerald-600 text-white rounded shadow hover:bg-emerald-700 font-medium"
+            title="Genera un informe técnico completo apto para entregar al cliente. Incluye portada, datos generales, diagrama unilineal, cuadros y plan de normalización."
+          >📄 Generar informe completo PDF</Link>
+          <a
+            href={`/api/clientes/${clienteSlug}/tableros/${tableroSlug}/exportar.xlsx`}
+            className="text-sm px-3 py-1 border rounded text-blue-700 hover:bg-blue-50"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Exportar a Excel ↓</a>
+        </div>
       </div>
       <div className="px-6 border-b">
         <nav className="flex gap-1">

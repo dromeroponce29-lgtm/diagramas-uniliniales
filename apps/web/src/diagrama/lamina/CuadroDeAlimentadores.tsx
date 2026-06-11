@@ -1,5 +1,6 @@
 // Cuadro del alimentador de entrada — datos RIC N°18.
 import type { Tablero } from '@tipos/modelo';
+import { imprimirModulo, clasesBotonImprimir } from '../../hooks/imprimirModulo.js';
 
 interface Props {
   tablero: Tablero;
@@ -14,6 +15,14 @@ export function CuadroDeAlimentadores({ tablero }: Props) {
   const ig = tablero.componentes.find(c => c.tipo === 'interruptor-general');
 
   return (
+    <div className="imprimir-modulo imprimir-modulo-cuadro-alimentadores">
+    <div className="flex items-center justify-end mb-2 imprimir-oculto">
+      <button
+        onClick={() => imprimirModulo('cuadro-alimentadores', true)}
+        className={clasesBotonImprimir()}
+        title="Imprime únicamente el cuadro de alimentadores."
+      >🖨️ Imprimir esta sección</button>
+    </div>
     <table className="w-full text-xs border-collapse">
       <thead>
         <tr className="border-b text-left text-slate-700 font-medium">
@@ -44,5 +53,6 @@ export function CuadroDeAlimentadores({ tablero }: Props) {
         </tr>
       </tbody>
     </table>
+    </div>
   );
 }

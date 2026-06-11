@@ -1,5 +1,7 @@
 // Cuadro de cargas normativo RIC N°18 — tabla por circuito.
+import { useNavigate, useParams } from 'react-router-dom';
 import type { Tablero } from '@tipos/modelo';
+import { imprimirModulo, clasesBotonImprimir } from '../../hooks/imprimirModulo.js';
 
 interface Props {
   tablero: Tablero;
@@ -10,11 +12,55 @@ function f(v: number | undefined, decimales = 1): string {
 }
 
 export function CuadroDeCargas({ tablero }: Props) {
+  const navigate = useNavigate();
+  const { clienteSlug, tableroSlug } = useParams();
+
+  // Navega a la sub-tab "Circuitos" del panel de fotos y componentes, donde
+  // vive el editor manual de circuitos (TablaCircuitos).
+  function irAEditorCircuitos() {
+    if (clienteSlug && tableroSlug) {
+      navigate(
+        `/clientes/${clienteSlug}/tableros/${tableroSlug}?tab=fotos-componentes&subtab=circuitos`
+      );
+    }
+  }
+
   if (tablero.circuitos.length === 0) {
-    return <p className="text-xs text-slate-500 italic">Cuadro de cargas — sin circuitos definidos</p>;
+    return (
+      <div className="imprimir-modulo imprimir-modulo-cuadro-cargas">
+        <div className="flex items-center justify-between mb-2 imprimir-oculto">
+          <span className="text-xs text-slate-500 italic">
+            Cuadro de cargas — sin circuitos definidos
+          </span>
+          <button
+            onClick={() => imprimirModulo('cuadro-cargas', true)}
+            className={clasesBotonImprimir()}
+            title="Imprime únicamente el cuadro de cargas."
+          >🖨️ Imprimir esta sección</button>
+        </div>
+        <div className="border border-dashed border-slate-300 rounded p-4 text-center bg-slate-50">
+          <p className="text-sm text-slate-600 mb-3">
+            No hay circuitos definidos todavía. Puedes agregarlos manualmente
+            o extraerlos automáticamente desde fotos del tablero.
+          </p>
+          <button
+            onClick={irAEditorCircuitos}
+            className="text-sm px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >+ Agregar circuito manual</button>
+        </div>
+      </div>
+    );
   }
 
   return (
+    <div className="imprimir-modulo imprimir-modulo-cuadro-cargas">
+    <div className="flex items-center justify-end mb-2 imprimir-oculto">
+      <button
+        onClick={() => imprimirModulo('cuadro-cargas', true)}
+        className={clasesBotonImprimir()}
+        title="Imprime únicamente el cuadro de cargas."
+      >🖨️ Imprimir esta sección</button>
+    </div>
     <table className="w-full text-xs border-collapse">
       <thead>
         <tr className="border-b text-left text-slate-700 font-medium">
@@ -54,5 +100,6 @@ export function CuadroDeCargas({ tablero }: Props) {
         })}
       </tbody>
     </table>
+    </div>
   );
 }
