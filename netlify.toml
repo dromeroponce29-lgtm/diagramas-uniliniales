@@ -1,0 +1,42 @@
+# Configuración de Netlify para el monorepo de Diagramas Unilineales.
+# Sube SOLO el frontend (apps/web). El backend vive en Render.
+#
+# Flujo: cada push a main → Netlify clona el repo → corre el build → publica.
+
+[build]
+  # Comando que Netlify ejecuta al detectar un push.
+  # npm ci instala las dependencias del workspace y luego buildea solo apps/web.
+  command = "npm ci && npm run build --workspace apps/web"
+
+  # Carpeta que Netlify publica como sitio (lo que generó Vite).
+  publish = "apps/web/dist"
+
+[build.environment]
+  # Versión de Node compatible con el proyecto (engines >=20 en package.json).
+  NODE_VERSION = "20"
+
+  # URL pública del backend en Render.
+  # Si cambia el nombre del servicio, ajustá este valor y volvé a hacer push.
+  VITE_API_URL = "https://diagramas-uniliniales-api.onrender.com"
+
+# Redirecciona TODA ruta no encontrada al index.html del SPA.
+# Necesario para que React Router maneje /clientes/:slug, /tableros/:slug, etc.
+# Sin esto, recargar una sub-página da 404 en Netlify.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers de seguridad básicos para el sitio público.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cacheo agresivo de assets generados por Vite (tienen hash en el nombre).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
