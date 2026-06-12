@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { CuadroDeCargas } from '../src/diagrama/lamina/CuadroDeCargas.js';
 import type { Tablero } from '@tipos/modelo';
 
@@ -19,7 +20,11 @@ function base(): Tablero {
 
 describe('CuadroDeCargas', () => {
   it('muestra "sin circuitos" cuando el tablero no tiene circuitos', () => {
-    render(<CuadroDeCargas tablero={base()} />);
+    render(
+      <MemoryRouter>
+        <CuadroDeCargas tablero={base()} />
+      </MemoryRouter>
+    );
     expect(screen.getByText(/sin circuitos/i)).toBeDefined();
   });
 
@@ -32,7 +37,11 @@ describe('CuadroDeCargas', () => {
       seccionConductorMM2: 2.5, longitudM: 8, cargaW: 600, corrienteA: 2.7,
       procedencia: { fuente: 'manual', confianza: 'alta' }
     }];
-    render(<CuadroDeCargas tablero={t} />);
+    render(
+      <MemoryRouter>
+        <CuadroDeCargas tablero={t} />
+      </MemoryRouter>
+    );
     expect(screen.getByText('Iluminación living')).toBeDefined();
     expect(screen.getByText(/C16/)).toBeDefined();
     expect(screen.getByText('2.5')).toBeDefined();
