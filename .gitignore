@@ -10,6 +10,10 @@ build/
 .env
 .env.local
 .env.*.local
+# Vite carga estos archivos locales del frontend (no se versionan)
+apps/web/.env.local
+apps/web/.env.production.local
+# NOTA: apps/web/.env.production SÍ se versiona (la URL pública del backend no es secreta)
 
 # Datos del usuario (proyectos guardados en disco)
 proyectos/

@@ -5,7 +5,9 @@ import { AgenteOpenAI } from './agentes/openai.js';
 import { auditarTablero } from './agentes/auditoria.js';
 import { refinarConversacion } from './agentes/refinador.js';
 
-const PUERTO = Number(process.env.PUERTO ?? 3001);
+// En Render el puerto se inyecta en PORT (convención estándar).
+// Localmente seguimos aceptando PUERTO. Fallback: 3001.
+const PUERTO = Number(process.env.PORT ?? process.env.PUERTO ?? 3001);
 
 const claveAnthropic = process.env.ANTHROPIC_API_KEY ?? '';
 const claveOpenai = process.env.OPENAI_API_KEY ?? '';
@@ -34,6 +36,7 @@ const app = crearApp({
     })
 });
 
-app.listen(PUERTO, () => {
-  console.log(`[servidor] escuchando en http://localhost:${PUERTO}`);
+// 0.0.0.0 es requerido por Render (sino el healthcheck no llega al servicio).
+app.listen(PUERTO, '0.0.0.0', () => {
+  console.log(`[servidor] escuchando en puerto ${PUERTO}`);
 });

@@ -16,13 +16,45 @@ export interface DepsApp {
   ejecutarRefinador?: EjecutorRefinador;   // opcional para tests
 }
 
+// Lee ORIGENES_PERMITIDOS (CSV) desde el entorno y devuelve la lista parseada.
+// Si la variable no está seteada, devuelve los defaults (dev + producción).
+function leerOrigenesPermitidos(): string[] {
+  const env = process.env.ORIGENES_PERMITIDOS;
+  const raw = env && env.trim().length > 0
+    ? env
+    : 'http://localhost:5173,https://unilineales.tecnofitness.cl';
+  return raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+}
+
+// Versión del paquete (para el healthcheck). Si falla la lectura, no rompe.
+function leerVersion(): string {
+  try {
+    // process.env.npm_package_version lo expone npm cuando arranca por script
+    return process.env.npm_package_version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
 export function crearApp(deps: DepsApp): Express {
   const app = express();
-  app.use(cors({ origin: 'http://localhost:5173' }));
+  const origenesPermitidos = leerOrigenesPermitidos();
+  app.use(cors({ origin: origenesPermitidos }));
   app.use(express.json({ limit: '20mb' }));
 
+  const respuestaSalud = () => ({
+    estado: 'ok' as const,
+    timestamp: new Date().toISOString(),
+    version: leerVersion()
+  });
+
   app.get('/api/salud', (_req, res) => {
-    res.json({ estado: 'ok', timestamp: new Date().toISOString() });
+    res.json(respuestaSalud());
+  });
+
+  // Render busca /healthz por defecto en algunos casos.
+  app.get('/healthz', (_req, res) => {
+    res.json(respuestaSalud());
   });
 
   app.use('/api', crearRutasClientes());

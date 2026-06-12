@@ -1,0 +1,30 @@
+# Configuración de despliegue para Render.com
+# Documentación: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: diagramas-uniliniales-api
+    runtime: node
+    region: oregon # ajustar si hay otra región más cercana
+    plan: starter  # $7/mes — incluye disco persistente
+    buildCommand: npm ci && npm run build --workspace apps/servidor
+    startCommand: npm run start --workspace apps/servidor
+    healthCheckPath: /api/salud
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DIRECTORIO_PROYECTOS
+        value: /data/proyectos
+      - key: ORIGENES_PERMITIDOS
+        value: https://unilineales.tecnofitness.cl,http://localhost:5173
+      - key: CLAUDE_MODEL
+        value: claude-opus-4-7
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: ANTHROPIC_API_KEY
+        sync: false # se setea manualmente en el dashboard de Render
+      - key: OPENAI_API_KEY
+        sync: false # se setea manualmente en el dashboard de Render
+    disk:
+      name: datos-proyectos
+      mountPath: /data
+      sizeGB: 1

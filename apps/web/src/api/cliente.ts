@@ -4,8 +4,13 @@ import type {
   EstadoPlan, UnidadCatalogo, CategoriaCatalogo
 } from '@tipos/modelo';
 
+// Prefijo de la API. En dev queda vacío para que el proxy de Vite enrute
+// /api/* hacia el backend local. En producción se setea VITE_API_URL con la
+// URL pública del backend (por ejemplo https://...onrender.com).
+export const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
 async function pedir<T>(metodo: string, url: string, body?: unknown): Promise<T> {
-  const r = await fetch(url, {
+  const r = await fetch(`${API_BASE}${url}`, {
     method: metodo,
     ...(body !== undefined && {
       headers: { 'Content-Type': 'application/json' },
@@ -69,7 +74,7 @@ export const apiTableros = {
   subirFoto: async (clienteSlug: string, tableroSlug: string, archivo: File): Promise<Tablero> => {
     const fd = new FormData();
     fd.append('foto', archivo);
-    const r = await fetch(`/api/clientes/${clienteSlug}/tableros/${tableroSlug}/fotos`, {
+    const r = await fetch(`${API_BASE}/api/clientes/${clienteSlug}/tableros/${tableroSlug}/fotos`, {
       method: 'POST',
       body: fd
     });

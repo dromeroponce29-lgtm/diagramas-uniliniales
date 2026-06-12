@@ -8,7 +8,11 @@
   },
   "include": [
     "src/**/*",
-    "tests/**/*",
     "../../tipos/**/*"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "tests"
   ]
 }

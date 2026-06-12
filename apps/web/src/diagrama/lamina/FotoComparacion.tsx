@@ -3,6 +3,7 @@
 // Al imprimir/exportar, esta sección queda en página aparte (CSS @media print).
 import { useState } from 'react';
 import type { Tablero } from '@tipos/modelo';
+import { API_BASE } from '../../api/cliente.js';
 
 interface Props {
   tablero: Tablero;
@@ -24,7 +25,7 @@ export function FotoComparacion({ tablero, clienteSlug, tableroSlug }: Props) {
   }
 
   const url = fotoSeleccionada
-    ? `/api/clientes/${clienteSlug}/tableros/${tableroSlug}/fotos/${fotoSeleccionada.id}`
+    ? `${API_BASE}/api/clientes/${clienteSlug}/tableros/${tableroSlug}/fotos/${fotoSeleccionada.id}`
     : null;
 
   return (

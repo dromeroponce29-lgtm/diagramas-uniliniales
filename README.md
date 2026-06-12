@@ -108,6 +108,40 @@ proyectos/
             └── extracciones/<foto-id>-{claude,openai,reconciliado}.json
 ```
 
+## Despliegue en producción
+
+### Frontend → GitHub Pages
+
+El frontend se construye y se publica en **`https://unilineales.tecnofitness.cl`** (CNAME apuntando a GitHub Pages). El deploy es automático en cada `git push` al branch principal (workflow en `.github/workflows/`).
+
+La URL del backend remoto vive en `apps/web/.env.production` (variable `VITE_API_URL`). Si cambia, editá ese archivo y volvé a hacer push: GitHub Pages reconstruye con el nuevo valor.
+
+### Backend → Render.com (plan Starter, disco persistente)
+
+El backend corre en Render.com — plan **Starter ($7/mes)** con disco persistente de **1 GB** montado en `/data`. La configuración vive en `render.yaml` en la raíz del repo (Blueprint de Render).
+
+**Variables clave configuradas:**
+
+- `PORT` → la inyecta Render automáticamente.
+- `DIRECTORIO_PROYECTOS=/data/proyectos` → datos van al disco persistente.
+- `ORIGENES_PERMITIDOS=https://unilineales.tecnofitness.cl,http://localhost:5173` → CORS.
+- `CLAUDE_MODEL`, `OPENAI_MODEL` → modelos por defecto.
+- `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` → **se setean a mano** desde el dashboard de Render (marcadas como `sync: false` en el blueprint).
+
+**Healthcheck:** Render apunta a `/api/salud` (también responde `/healthz`).
+
+**Cómo subir cambios:** `git push` al branch principal — Render detecta el push, rebuildea (`npm ci && npm run build --workspace apps/servidor`) y reinicia el servicio con `npm run start --workspace apps/servidor`.
+
+**Cómo migrar datos al disco de Render:** desde tu máquina, con `proyectos/` local lleno (por ejemplo `apps/servidor/proyectos/montenegro/`):
+
+```bash
+# Opción 1 — usar el Shell de Render (Dashboard > Service > Shell) y subir vía SFTP/scp.
+# Opción 2 — rsync sobre SSH si habilitaste SSH al servicio:
+rsync -avz apps/servidor/proyectos/ <usuario>@<servicio>.onrender.com:/data/proyectos/
+```
+
+La forma más simple es comprimir local (`tar czf proyectos.tgz apps/servidor/proyectos/`), subir el `.tgz` por el Shell de Render y descomprimir en `/data/`.
+
 ## Estado del proyecto
 
 🟢 **En desarrollo activo.** Estable para uso personal/interno; en evaluación para uso comercial con clientes.

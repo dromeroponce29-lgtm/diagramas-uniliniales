@@ -5,6 +5,9 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Tablero } from '@tipos/modelo';
 
+// Prefijo de la API. Vacío en dev (usa proxy de Vite), URL completa en producción.
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
 interface Mensaje {
   rol: 'usuario' | 'agente';
   texto: string;
@@ -37,7 +40,7 @@ export function ChatRefinador({ clienteSlug, tableroSlug }: Props) {
     setCargando(true); setError(null);
 
     try {
-      const r = await fetch(`/api/clientes/${clienteSlug}/tableros/${tableroSlug}/refinador`, {
+      const r = await fetch(`${API_BASE}/api/clientes/${clienteSlug}/tableros/${tableroSlug}/refinador`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

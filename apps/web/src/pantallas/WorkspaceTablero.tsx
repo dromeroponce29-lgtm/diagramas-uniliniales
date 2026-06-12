@@ -8,6 +8,7 @@ import { TabDatosGenerales } from '../componentes/tabs/TabDatosGenerales.js';
 import { TabFotosComponentes } from '../componentes/tabs/TabFotosComponentes.js';
 import { TabDiagrama } from '../componentes/tabs/TabDiagrama.js';
 import { TabAnalisisRIC } from '../componentes/tabs/TabAnalisisRIC.js';
+import { API_BASE } from '../api/cliente.js';
 
 type TabId = 'datos-generales' | 'fotos-componentes' | 'diagrama' | 'ric';
 const TABS_PERMITIDAS: readonly TabId[] = ['datos-generales', 'fotos-componentes', 'diagrama', 'ric'];
@@ -60,7 +61,7 @@ export function WorkspaceTablero() {
             title="Genera un informe técnico completo apto para entregar al cliente. Incluye portada, datos generales, diagrama unilineal, cuadros y plan de normalización."
           >📄 Generar informe completo PDF</Link>
           <a
-            href={`/api/clientes/${clienteSlug}/tableros/${tableroSlug}/exportar.xlsx`}
+            href={`${API_BASE}/api/clientes/${clienteSlug}/tableros/${tableroSlug}/exportar.xlsx`}
             className="text-sm px-3 py-1 border rounded text-blue-700 hover:bg-blue-50"
             target="_blank"
             rel="noopener noreferrer"
